@@ -74,14 +74,59 @@ class LegrandEcocompteur extends utils.Adapter {
     }
 
     parsePage(page) {
-        // TIC interface kWh reading...
-        this.log.debug('kWh: ' + (page.match(/conso_base = \'(.*)\'/)[1]/1000));
+        // TIC interface kWh reading... note this is presented in watts so divide by 1000
+        let TICReading = page.match(/conso_base = \'(.*)\'/)[1] / 1000;
+        this.log.debug('kWh: ' + TICReading);
 
-        for (var circuit = 1; circuit < 6; circuit++) {
-            var regexp = 'c' + circuit + 'Name = getLabel\\("(.*)"';
-            var label = page.match(regexp)[1];
+        // Create state and set value
+        const TICStateName = 'TICReading';
+        this.setObjectNotExists(TICStateName, {
+            type: 'state',
+            common: {
+                name: 'TIC Reading',
+                type: 'number',
+                role: 'value',
+                read: true,
+                write: true
+            },
+        }, _ => {
+            this.setState(TICStateName, { val: TICReading, ack: true });
+        });
+        
+        // Parse out the labels for each circuit and create
+        for (let cno = 1; cno < 6; cno++) {
+            let regexp = 'c' + cno + 'Name = getLabel\\("(.*)"';
+            let label = page.match(regexp)[1];
             label = label.trim();
-            this.log.debug('Circuit name ' + circuit + ': ' + label);
+            this.log.debug('Circuit name ' + cno + ': ' + label);
+
+            // Create state and set value
+            const labelStateName = 'c' + cno + '.label';
+            const powerStateName = 'c' + cno + '.power';
+            this.setObjectNotExists(labelStateName, {
+                type: 'state',
+                common: {
+                    name: 'Circuit ' + cno + ' label',
+                    type: 'string',
+                    role: 'text',
+                    read: true,
+                    write: true
+                }
+            }, _ => {
+                this.setState(labelStateName, { val: label, ack: true });
+            });
+
+            // At this point let's create state for instantaneous power reading to use later
+            this.setObjectNotExists(powerStateName, {
+                type: 'state',
+                common: {
+                    name: 'Circuit ' + cno + ' instantaneous power',
+                    type: 'number',
+                    role: 'value',
+                    read: true,
+                    write: true
+                }
+            });
         }
     }
 

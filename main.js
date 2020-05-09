@@ -11,8 +11,26 @@ const utils = require('@iobroker/adapter-core');
 // The device communicates over http only
 const http = require('http');
 
-// How wmany circuit inputs does the device have?
-const maximumCircuit = 5;
+/*
+ * Configuration for each circuit.
+ * - Regexp to find label on index.
+ * - element to find reading in JSON.
+ * - Our state names for label, instantaneous power and total energy.
+ *
+ * It's done this way so we can use a dummy circuit for totals & do things in loops nicely(ish).
+ * Total must come last!
+ *
+ * Maybe we should do this in a loop in the constructor but what's the point? ;)
+ */
+
+ const circuits = [
+    { name: 'c1', powerStateName: 'c1.power', energyStateName: 'c1.energy', labelStateName: 'c1.label', labelRegexp: 'c1Name = getLabel\\("(.*)"', jsonWatts: 'data1' },
+    { name: 'c2', powerStateName: 'c2.power', energyStateName: 'c2.energy', labelStateName: 'c2.label', labelRegexp: 'c2Name = getLabel\\("(.*)"', jsonWatts: 'data2' },
+    { name: 'c3', powerStateName: 'c3.power', energyStateName: 'c3.energy', labelStateName: 'c3.label', labelRegexp: 'c3Name = getLabel\\("(.*)"', jsonWatts: 'data3' },
+    { name: 'c4', powerStateName: 'c4.power', energyStateName: 'c4.energy', labelStateName: 'c4.label', labelRegexp: 'c4Name = getLabel\\("(.*)"', jsonWatts: 'data4' },
+    { name: 'c5', powerStateName: 'c5.power', energyStateName: 'c5.energy', labelStateName: 'c5.label', labelRegexp: 'c5Name = getLabel\\("(.*)"', jsonWatts: 'data5' },
+    { name: 'Total', powerStateName: 'cTotal.power', energyStateName: 'cTotal.energy' },
+ ];
 
 class LegrandEcocompteur extends utils.Adapter {
 
@@ -31,13 +49,21 @@ class LegrandEcocompteur extends utils.Adapter {
         /*
          * For kWh calculations, keep track of:
          * - Timestamp of last valid JSON reading.
-         * - Array of last JSON readings.
+         * - Array (empty to be filled later) of last readings.
          */
-
         this.lastJSONTimestamp = 0;
-        // Bit nasty hardcoding 5 circuits, but that's all there are!
-        this.lastCircuitWatts = [0, 0, 0, 0, 0];
+        this.lastCircuitWatts = [];
 
+        /*
+         * In some error cases (network unreachable, etc) a request could take longer
+         * to complete than the interval.
+         * Let's use a variable to indicate we're waiting for a network request and
+         * not start any more if one is alreayd in progress.
+         * 
+         * TODO: maybe this should be a counter of some king to make sure it doesn't
+         * get stuck blocking new requests?
+         */
+        this.requestInProgress = false;
     }
 
     /**
@@ -58,32 +84,46 @@ class LegrandEcocompteur extends utils.Adapter {
         }
     }
 
-    hitPage(cb) {
-        this.log.debug('Loading index page...');
-        const options = {
-            host: this.config.ip,
-            port: '80',
-            path: '/1.html',
-            method: 'GET'
-        };
+    // Fetch a page from the device and pass body to the callback (or call the error callback if given).
+    doRequest(path, cb, ecb) {
+        if (this.requestInProgress) {
+            this.log.warn("Won't issue request, one already in progress!");
+        } else {
+            this.log.debug('Loading ' + path + '...');
+            const options = {
+                host: this.config.ip,
+                port: '80',
+                path: path,
+                method: 'GET'
+            };
 
-        const req = http.request(options, res => {
-            let body = '';
-            res.on('data', data => {
-                body += data;
+            this.requestInProgress = true;
+            const req = http.request(options, res => {
+                let body = '';
+                res.on('data', data => {
+                    body += data;
+                });
+                res.on('end', _ => {
+                    this.requestInProgress = false;
+                    if (res.statusCode == 200) {
+                        cb(body);
+                    } else {
+                        this.log.error('Bad status code loading ' + path + ' (' + res.statusCode + ')');
+                        if (typeof ecb !== 'undefined') { ecb(); };
+                    }
+                });
             });
-            res.on('end', _ => {
-                if (res.statusCode == 200) {
-                    cb(body);
-                } else {
-                    this.log.debug('Bad status code: ' + res.statusCode);
-                }
+            req.on('error', error => {
+                this.requestInProgress = false;
+                this.log.error('Request error: ' + error.code);
+                if (typeof ecb !== 'undefined') { ecb(); };
             });
-        });
-        req.on('error', error => {
-            this.log.error('Request error: ' + error.code);
-        });
-        req.end();
+            req.end();
+        }
+    }
+
+    hitPage(cb) {
+        this.doRequest('/1.html', cb);
     }
 
     /*
@@ -120,35 +160,32 @@ class LegrandEcocompteur extends utils.Adapter {
         // Handle TIC reading
         this.parseTICPage(page);
         
-        // Parse out the labels for each circuit and create
-        for (let cno = 1; cno <= maximumCircuit; cno++) {
-            let regexp = 'c' + cno + 'Name = getLabel\\("(.*)"';
-            let label = page.match(regexp)[1];
-            label = label.trim();
-            this.log.debug('Circuit name ' + cno + ': ' + label);
+        circuits.forEach(circuit => {
+            if (circuit.hasOwnProperty('labelRegexp')) {
+                // This is a 'real' circuit - parse out the label
+                let label = page.match(circuit.labelRegexp)[1];
+                label = label.trim();
+                this.log.debug('Circuit ' + circuit.name + ': ' + label);
 
-            // Create state and set value
-            const labelStateName = 'c' + cno + '.label';
-            const powerStateName = 'c' + cno + '.power';
-            const energyStateName = 'c' + cno + '.energy';
-            this.setObjectNotExists(labelStateName, {
+                this.setObjectNotExists(circuit.labelStateName, {
+                    type: 'state',
+                    common: {
+                        name: circuit.name + ' label',
+                        type: 'string',
+                        role: 'text',
+                        read: true,
+                        write: true
+                    }
+                }, _ => {
+                    this.setState(circuit.labelStateName, { val: label, ack: true });
+                });
+            }
+
+            // Always create state for instantaneous power reading to use later...
+            this.setObjectNotExists(circuit.powerStateName, {
                 type: 'state',
                 common: {
-                    name: 'Circuit ' + cno + ' label',
-                    type: 'string',
-                    role: 'text',
-                    read: true,
-                    write: true
-                }
-            }, _ => {
-                this.setState(labelStateName, { val: label, ack: true });
-            });
-
-            // At this point let's create state for instantaneous power reading to use later
-            this.setObjectNotExists(powerStateName, {
-                type: 'state',
-                common: {
-                    name: 'Circuit ' + cno + ' instantaneous power',
+                    name: circuit.name + ' instantaneous power',
                     type: 'number',
                     role: 'value',
                     unit: 'W',
@@ -157,10 +194,10 @@ class LegrandEcocompteur extends utils.Adapter {
                 }
             });
             /// ... and total energy for this circuit
-            this.setObjectNotExists(energyStateName, {
+            this.setObjectNotExists(circuit.energyStateName, {
                 type: 'state',
                 common: {
-                    name: 'Circuit ' + cno + ' energy',
+                    name: circuit.name + ' energy',
                     type: 'number',
                     role: 'value',
                     unit: 'kWh',
@@ -168,7 +205,7 @@ class LegrandEcocompteur extends utils.Adapter {
                     write: true
                 }
             });
-        }
+        });
 
         /*
          * If we get here then the first page fetch was a success...
@@ -181,44 +218,17 @@ class LegrandEcocompteur extends utils.Adapter {
     }
 
     hitJSON() {
-        this.log.debug('Loading JSON...');
-        const options = {
-            host: this.config.ip,
-            port: '80',
-            path: '/inst.json',
-            method: 'GET'
-        };
-
-        const req = http.request(options, res => {
-            let body = '';
-            res.on('data', data => {
-                body += data;
-            });
-            res.on('end', _ => {
-                if (res.statusCode == 200) {
-                    this.parseJSON(body);
-                } else {
-                    this.log.debug('Bad status code: ' + res.statusCode);
-                    this.badJSON;
-                }
-            });
-        });
-        req.on('error', error => {
-            this.log.error('Request error: ' + error.code);
-            this.badJSON;
-        });
-        req.end();
+        this.doRequest('/inst.json', this.parseJSON.bind(this), this.zeroReadings.bind(this));
     }
 
     // If we get an error from JSON request zero everything out to prevent bogus values
-    badJSON() {
-        this.log.error('Zero out power readings after bad response');
-        lastJSONTimestamp = 0;
-        for (let cno = 1; cno <= maximumCircuit; cno++) {
-            const powerStateName = 'c' + cno + '.power';
-            this.setState(powerStateName, { val: 0, ack: true });
-            lastCircuitWatts[cno - 1] = 0;
-        }
+    zeroReadings() {
+        this.log.info('Setting zero readings');
+        this.lastJSONTimestamp = 0;
+        circuits.forEach(circuit => {
+            this.setState(circuit.powerStateName, { val: 0, ack: true });
+            this.lastCircuitWatts[circuit.name] = 0;
+        });
     }
 
     // Process good response
@@ -229,33 +239,39 @@ class LegrandEcocompteur extends utils.Adapter {
 
         try {
             let json = JSON.parse(body);
-            for (let cno = 1; cno <= maximumCircuit; cno++) {
-                const powerStateName = 'c' + cno + '.power';
-                const energyStateName = 'c' + cno + '.energy';
-
-                let watts = json['data' + cno];
-                this.setState(powerStateName, { val: watts, ack: true });
+            let totalWatts = 0;
+            circuits.forEach(circuit => {
+                let watts = 0;
+                if (circuit.hasOwnProperty('jsonWatts')) {
+                    watts = json[circuit.jsonWatts];
+                    totalWatts += watts;
+                } else {
+                    // Special case for total which must come last in the list of circuits!
+                    watts = totalWatts;
+                }
+                this.setState(circuit.powerStateName, { val: watts, ack: true });
 
                 // Work out kWh since last reading (only if period & last reading are good).
-                let lastWatts = this.lastCircuitWatts[cno - 1]
+                let lastWatts = this.lastCircuitWatts[circuit.name];
                 if (lastWatts > 0 && this.lastJSONTimestamp > 0) {
                     let kWh = lastWatts / 1000 * period;
-                    this.log.debug('lastWatts ' + lastWatts + ' @ period ' + period + ' = ' + kWh + 'kWh');
-                    this.getState(energyStateName, (err, state) => {
+                    this.log.debug(circuit.name + ': lastWatts ' + lastWatts + ' @ period ' + period + ' = ' + kWh + 'kWh');
+                    this.getState(circuit.energyStateName, (err, state) => {
                         if (!err) {
                             if (state) {
                                 kWh += state.val;
                             }
-                            this.setState(energyStateName, { val: kWh, ack: true });
+                            this.setState(circuit.energyStateName, { val: kWh, ack: true });
                         } else {
                             this.log.error(err);
                         }
                     });
                 }
-                this.lastCircuitWatts[cno - 1] = watts;
-            }
+                this.lastCircuitWatts[circuit.name] = watts;
+            });
         } catch (error) {
             this.log.error(error.message);
+            this.zeroReadings();
         };
 
         this.lastJSONTimestamp = timestamp;
@@ -268,6 +284,7 @@ class LegrandEcocompteur extends utils.Adapter {
     onUnload(callback) {
         try {
             this.log.info('cleaned everything up...');
+            this.zeroReadings();
             callback();
         } catch (e) {
             callback();

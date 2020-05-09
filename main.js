@@ -11,6 +11,9 @@ const utils = require('@iobroker/adapter-core');
 // The device communicates over http only
 const http = require('http');
 
+// How wmany circuit inputs does the device have?
+const maximumCircuit = 5;
+
 class LegrandEcocompteur extends utils.Adapter {
 
     /**
@@ -24,6 +27,17 @@ class LegrandEcocompteur extends utils.Adapter {
         this.on('objectChange', this.onObjectChange.bind(this));
         this.on('stateChange', this.onStateChange.bind(this));
         this.on('unload', this.onUnload.bind(this));
+
+        /*
+         * For kWh calculations, keep track of:
+         * - Timestamp of last valid JSON reading.
+         * - Array of last JSON readings.
+         */
+
+        this.lastJSONTimestamp = 0;
+        // Bit nasty hardcoding 5 circuits, but that's all there are!
+        this.lastCircuitWatts = [0, 0, 0, 0, 0];
+
     }
 
     /**
@@ -107,7 +121,7 @@ class LegrandEcocompteur extends utils.Adapter {
         this.parseTICPage(page);
         
         // Parse out the labels for each circuit and create
-        for (let cno = 1; cno < 6; cno++) {
+        for (let cno = 1; cno <= maximumCircuit; cno++) {
             let regexp = 'c' + cno + 'Name = getLabel\\("(.*)"';
             let label = page.match(regexp)[1];
             label = label.trim();
@@ -116,6 +130,7 @@ class LegrandEcocompteur extends utils.Adapter {
             // Create state and set value
             const labelStateName = 'c' + cno + '.label';
             const powerStateName = 'c' + cno + '.power';
+            const energyStateName = 'c' + cno + '.energy';
             this.setObjectNotExists(labelStateName, {
                 type: 'state',
                 common: {
@@ -136,6 +151,19 @@ class LegrandEcocompteur extends utils.Adapter {
                     name: 'Circuit ' + cno + ' instantaneous power',
                     type: 'number',
                     role: 'value',
+                    unit: 'W',
+                    read: true,
+                    write: true
+                }
+            });
+            /// ... and total energy for this circuit
+            this.setObjectNotExists(energyStateName, {
+                type: 'state',
+                common: {
+                    name: 'Circuit ' + cno + ' energy',
+                    type: 'number',
+                    role: 'value',
+                    unit: 'kWh',
                     read: true,
                     write: true
                 }
@@ -171,25 +199,66 @@ class LegrandEcocompteur extends utils.Adapter {
                     this.parseJSON(body);
                 } else {
                     this.log.debug('Bad status code: ' + res.statusCode);
+                    this.badJSON;
                 }
             });
         });
         req.on('error', error => {
             this.log.error('Request error: ' + error.code);
+            this.badJSON;
         });
         req.end();
     }
 
+    // If we get an error from JSON request zero everything out to prevent bogus values
+    badJSON() {
+        this.log.error('Zero out power readings after bad response');
+        lastJSONTimestamp = 0;
+        for (let cno = 1; cno <= maximumCircuit; cno++) {
+            const powerStateName = 'c' + cno + '.power';
+            this.setState(powerStateName, { val: 0, ack: true });
+            lastCircuitWatts[cno - 1] = 0;
+        }
+    }
+
+    // Process good response
     parseJSON(body) {
+        let timestamp = Date.now();
+        // We want the period in hours for kWh calculation
+        let period = (timestamp - this.lastJSONTimestamp) / 1000 / 3600;
+
         try {
             let json = JSON.parse(body);
-            for (let cno = 1; cno < 6; cno++) {
+            for (let cno = 1; cno <= maximumCircuit; cno++) {
                 const powerStateName = 'c' + cno + '.power';
-                this.setState(powerStateName, { val: json['data' + cno], ack: true });
+                const energyStateName = 'c' + cno + '.energy';
+
+                let watts = json['data' + cno];
+                this.setState(powerStateName, { val: watts, ack: true });
+
+                // Work out kWh since last reading (only if period & last reading are good).
+                let lastWatts = this.lastCircuitWatts[cno - 1]
+                if (lastWatts > 0 && this.lastJSONTimestamp > 0) {
+                    let kWh = lastWatts / 1000 * period;
+                    this.log.debug('lastWatts ' + lastWatts + ' @ period ' + period + ' = ' + kWh + 'kWh');
+                    this.getState(energyStateName, (err, state) => {
+                        if (!err) {
+                            if (state) {
+                                kWh += state.val;
+                            }
+                            this.setState(energyStateName, { val: kWh, ack: true });
+                        } else {
+                            this.log.error(err);
+                        }
+                    });
+                }
+                this.lastCircuitWatts[cno - 1] = watts;
             }
         } catch (error) {
-            console.error(error.message);
-        };        
+            this.log.error(error.message);
+        };
+
+        this.lastJSONTimestamp = timestamp;
     }
 
     /**

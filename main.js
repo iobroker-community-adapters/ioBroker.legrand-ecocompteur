@@ -8,8 +8,8 @@
 // you need to create an adapter
 const utils = require('@iobroker/adapter-core');
 
-// Load your modules here, e.g.:
-// const fs = require("fs");
+// The device communicates over http only
+const http = require('http');
 
 class LegrandEcocompteur extends utils.Adapter {
 
@@ -31,10 +31,54 @@ class LegrandEcocompteur extends utils.Adapter {
      */
     async onReady() {
         // Error if we don't have the target IP address configured
-        if (this.config.ip) {
-            this.log.info('ip: ' + this.config.ip);
+        if (this.config.ip && this.config.pollJSON && this.config.pollIndex) {
+            this.log.info('ip: ' + this.config.ip + ' JSON Poll: ' + this.config.pollJSON + ' Index Poll: ' + this.config.pollIndex);
+
+            /**
+             * Hit the index page first to parse out circuit names, etc.
+             */
+            this.hitPage();
         } else {
-            this.log.error("Please configure the device's IP address");
+            this.log.error("Please configure the adapter settings");
+        }
+    }
+
+    hitPage() {
+        this.log.debug('Loading index page...');
+        const options = {
+            host: this.config.ip,
+            port: '80',
+            path: '/1.html',
+            method: 'GET'
+        };
+
+        const req = http.request(options, res => {
+            let body = '';
+            res.on('data', data => {
+                body += data;
+            });
+            res.on('information', info => {
+                this.log.debug('statusCode: ' + info.statusCode);
+            });
+            res.on('end', _ => {
+                this.parsePage(body);
+            });
+        });
+        req.on('error', error => {
+            this.log.error(error);
+        });
+        req.end();
+    }
+
+    parsePage(page) {
+        // TIC interface kWh reading...
+        this.log.debug('kWh: ' + (page.match(/conso_base = \'(.*)\'/)[1]/1000));
+
+        for (var circuit = 1; circuit < 6; circuit++) {
+            var regexp = 'c' + circuit + 'Name = getLabel\\("(.*)"';
+            var label = page.match(regexp)[1];
+            label = label.trim();
+            this.log.debug('Circuit name ' + circuit + ': ' + label);
         }
     }
 

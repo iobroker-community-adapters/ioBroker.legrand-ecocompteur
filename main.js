@@ -36,14 +36,15 @@ class LegrandEcocompteur extends utils.Adapter {
 
             /**
              * Hit the index page first to parse out circuit names, etc.
+             * This also starts full timeout polling process.
              */
-            this.hitPage();
+            this.hitPage(this.parseFullPage.bind(this));
         } else {
             this.log.error("Please configure the adapter settings");
         }
     }
 
-    hitPage() {
+    hitPage(cb) {
         this.log.debug('Loading index page...');
         const options = {
             host: this.config.ip,
@@ -53,15 +54,13 @@ class LegrandEcocompteur extends utils.Adapter {
         };
 
         const req = http.request(options, res => {
-            this.log.debug('statusCode: ' + res.statusCode);
-
             let body = '';
             res.on('data', data => {
                 body += data;
             });
             res.on('end', _ => {
                 if (res.statusCode == 200) {
-                    this.parsePage(body);
+                    cb(body);
                 } else {
                     this.log.debug('Bad status code: ' + res.statusCode);
                 }
@@ -73,7 +72,11 @@ class LegrandEcocompteur extends utils.Adapter {
         req.end();
     }
 
-    parsePage(page) {
+    /*
+     * Function to pulls out the TIC reading and updates that state.
+     * This is the back on every page load (except first when it's called anyhow).
+     */
+    parseTICPage(page) {
         // TIC interface kWh reading... note this is presented in watts so divide by 1000
         let TICReading = page.match(/conso_base = \'(.*)\'/)[1] / 1000;
         this.log.debug('kWh: ' + TICReading);
@@ -92,6 +95,16 @@ class LegrandEcocompteur extends utils.Adapter {
         }, _ => {
             this.setState(TICStateName, { val: TICReading, ack: true });
         });
+    }
+
+    /*
+     * Function to pull out all power labels (as well as TIC reading) and start interval
+     * timers.
+     * This is the callback only on the first fetch.
+     */
+    parseFullPage(page) {
+        // Handle TIC reading
+        this.parseTICPage(page);
         
         // Parse out the labels for each circuit and create
         for (let cno = 1; cno < 6; cno++) {
@@ -128,6 +141,55 @@ class LegrandEcocompteur extends utils.Adapter {
                 }
             });
         }
+
+        /*
+         * If we get here then the first page fetch was a success...
+         * ... so start up the JSON interval timer.
+         */
+        setInterval(this.hitJSON.bind(this), this.config.pollJSON * 1000);
+
+        // .. and timer for subsiquent page fetches (just for TIC reading).
+        setInterval(this.hitPage.bind(this), this.config.pollIndex * 1000, this.parseTICPage.bind(this));
+    }
+
+    hitJSON() {
+        this.log.debug('Loading JSON...');
+        const options = {
+            host: this.config.ip,
+            port: '80',
+            path: '/inst.json',
+            method: 'GET'
+        };
+
+        const req = http.request(options, res => {
+            let body = '';
+            res.on('data', data => {
+                body += data;
+            });
+            res.on('end', _ => {
+                if (res.statusCode == 200) {
+                    this.parseJSON(body);
+                } else {
+                    this.log.debug('Bad status code: ' + res.statusCode);
+                }
+            });
+        });
+        req.on('error', error => {
+            this.log.error('Request error: ' + error.code);
+        });
+        req.end();
+    }
+
+    parseJSON(body) {
+        try {
+            let json = JSON.parse(body);
+            for (let cno = 1; cno < 6; cno++) {
+                const powerStateName = 'c' + cno + '.power';
+                this.setState(powerStateName, { val: json['data' + cno], ack: true });
+            }
+        } catch (error) {
+            console.error(error.message);
+        };        
     }
 
     /**

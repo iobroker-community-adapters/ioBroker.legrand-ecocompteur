@@ -1,0 +1,79 @@
+{
+    "common": {
+        "name": "legrand-ecocompteur",
+        "version": "0.0.1",
+        "news": {
+            "0.0.1": {
+                "en": "initial release",
+                "de": "Erstveröffentlichung",
+                "ru": "Начальная версия",
+                "pt": "lançamento inicial",
+                "nl": "Eerste uitgave",
+                "fr": "Première version",
+                "it": "Versione iniziale",
+                "es": "Versión inicial",
+                "pl": "Pierwsze wydanie",
+                "zh-cn": "首次出版"
+            }
+        },
+        "title": "Legrand Ecocompteur",
+        "titleLang": {
+            "en": "Legrand Ecocompteur",
+            "de": "Legrand Ecocompteur",
+            "ru": "Legrand Ecocompteur",
+            "pt": "Legrand Ecocompteur",
+            "nl": "Legrand Ecocompteur",
+            "fr": "Ecocompteur Legrand",
+            "it": "Legrand Ecocompteur",
+            "es": "Ecocompteur Legrand",
+            "pl": "Legrand Ecocompteur",
+            "zh-cn": "罗格朗生态公司"
+        },
+        "desc": {
+            "en": "Adapter for the Legrand Ecocompteur module (aka. Legrand Measurement Concentrator EMDX³ 412000).",
+            "de": "Adapter für das Legrand Ecocompteur-Modul (auch bekannt als Legrand Measurement Concentrator EMDX³ 412000).",
+            "ru": "Адаптер для модуля Legrand Ecocompteur (также известный как измерительный концентратор Legrand EMDX³ 412000).",
+            "pt": "Adaptador para o módulo Legrand Ecocompteur (também conhecido como Legrand Measurement Concentrator EMDX³ 412000).",
+            "nl": "Adapter voor de Legrand Ecocompteur-module (ook bekend als Legrand Meetconcentrator EMDX³ 412000).",
+            "fr": "Adaptateur pour le module Ecocompteur Legrand (alias. Concentrateur de mesure Legrand EMDX³ 412000).",
+            "it": "Adattatore per il modulo Legrand Ecocompteur (alias Legrand Measurement Concentrator EMDX³ 412000).",
+            "es": "Adaptador para el módulo Legrand Ecocompteur (también conocido como Legrand Measurement Concentrator EMDX³ 412000).",
+            "pl": "Adapter do modułu Legrand Ecocompteur (alias. Legrand Measurement Concentrator EMDX³ 412000).",
+            "zh-cn": "Legrand Ecocompteur模块的适配器（又名Legrand测量集中器EMDX³412000）。"
+        },
+        "authors": [
+            "Robin Rainton <robin@rainton.com>"
+        ],
+        "keywords": [
+            "Legrand",
+            "energy",
+            "power",
+            "measurement"
+        ],
+        "license": "MIT",
+        "platform": "Javascript/Node.js",
+        "main": "main.js",
+        "icon": "legrand-ecocompteur.png",
+        "enabled": true,
+        "extIcon": "https://raw.githubusercontent.com/Robin Rainton/ioBroker.legrand-ecocompteur/master/admin/legrand-ecocompteur.png",
+        "readme": "https://github.com/Robin Rainton/ioBroker.legrand-ecocompteur/blob/master/README.md",
+        "loglevel": "info",
+        "mode": "daemon",
+        "type": "energy",
+        "compact": true,
+        "connectionType": "local",
+        "dataSource": "poll",
+        "materialize": true,
+        "dependencies": [
+            {
+                "js-controller": ">=1.4.2"
+            }
+        ]
+    },
+    "native": {
+        "option1": true,
+        "option2": "42"
+    },
+    "objects": [],
+    "instanceObjects": []
+}

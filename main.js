@@ -53,19 +53,22 @@ class LegrandEcocompteur extends utils.Adapter {
         };
 
         const req = http.request(options, res => {
+            this.log.debug('statusCode: ' + res.statusCode);
+
             let body = '';
             res.on('data', data => {
                 body += data;
             });
-            res.on('information', info => {
-                this.log.debug('statusCode: ' + info.statusCode);
-            });
             res.on('end', _ => {
-                this.parsePage(body);
+                if (res.statusCode == 200) {
+                    this.parsePage(body);
+                } else {
+                    this.log.debug('Bad status code: ' + res.statusCode);
+                }
             });
         });
         req.on('error', error => {
-            this.log.error(error);
+            this.log.error('Request error: ' + error.code);
         });
         req.end();
     }

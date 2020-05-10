@@ -72,23 +72,25 @@
         </div>
 
         <div class="row">
-            <div class="col s6 input-field">
+            <div class="col s12 input-field">
                 <input class="value" id="ip" type="text" size="15" maxlength="15">
-                <label for="ip">IP</label>
-                <span>192.168.x.</span>
+                <label for="ip">IP Address of device</label>
             </div>
         </div>
 
         <div class="row">
-            <div class="col s3 input-field">
-                <input id="pollJSON" class="value"/>
-                <label for="round" class="translate">Interval to poll JSON values (in seconds)</label>
-                <span>For reference the device's built in web interface polls every second.</span>
+            <div class="col s12 input-field">
+                <input id="pollJSON" class="value" type="number" min="1"/>
+                <label for="round" class="translate">JSON polling interval (in seconds)</label>
+                <span>To read instantaneous power for all circuits. For reference the device's built in web interface polls every second.</span>
             </div>
-            <div class="col s3 input-field">
-                <input id="pollIndex" class="value"/>
-                <label for="round" class="translate">Interval to poll index page (in seconds)</label>
-                <span>Reloading the index page too often can cause the device's IP stack to crash. Periods below 120s are not recommended.</span>
+        </div>
+
+        <div class="row">
+            <div class="col s12 input-field">
+                <input id="pollIndex" class="value" type="number" min="1"/>
+                <label for="round" class="translate">Index polling interval (in seconds)</label>
+                <span>To obtain TIC reading. Be aware that polling the index page too often may cause the device's IP stack to crash. Periods below 120s are not recommended.</span>
             </div>
         </div>
 

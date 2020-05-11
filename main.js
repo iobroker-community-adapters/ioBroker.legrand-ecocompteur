@@ -23,21 +23,21 @@ const http = require('http');
  * Maybe we should do this in a loop in the constructor but what's the point? ;)
  */
 
- const circuits = [
+const circuits = [
     { name: 'c1', powerStateName: 'c1.power', energyStateName: 'c1.energy', labelStateName: 'c1.label', labelRegexp: 'c1Name = getLabel\\("(.*)"', jsonWatts: 'data1' },
     { name: 'c2', powerStateName: 'c2.power', energyStateName: 'c2.energy', labelStateName: 'c2.label', labelRegexp: 'c2Name = getLabel\\("(.*)"', jsonWatts: 'data2' },
     { name: 'c3', powerStateName: 'c3.power', energyStateName: 'c3.energy', labelStateName: 'c3.label', labelRegexp: 'c3Name = getLabel\\("(.*)"', jsonWatts: 'data3' },
     { name: 'c4', powerStateName: 'c4.power', energyStateName: 'c4.energy', labelStateName: 'c4.label', labelRegexp: 'c4Name = getLabel\\("(.*)"', jsonWatts: 'data4' },
     { name: 'c5', powerStateName: 'c5.power', energyStateName: 'c5.energy', labelStateName: 'c5.label', labelRegexp: 'c5Name = getLabel\\("(.*)"', jsonWatts: 'data5' },
     { name: 'Total', powerStateName: 'cTotal.power', energyStateName: 'cTotal.energy' },
- ];
+];
 
 class LegrandEcocompteur extends utils.Adapter {
 
     /**
      * @param {Partial<utils.AdapterOptions>} [options={}]
      */
-    constructor(options) {
+    constructor() {
         super({
             name: 'legrand-ecocompteur',
         });
@@ -69,7 +69,7 @@ class LegrandEcocompteur extends utils.Adapter {
              */
             this.hitPage(this.parseFullPage.bind(this));
         } else {
-            this.log.error("Please configure the adapter settings");
+            this.log.error('Please configure the adapter settings');
         }
     }
 
@@ -91,20 +91,20 @@ class LegrandEcocompteur extends utils.Adapter {
             res.on('data', data => {
                 body += data;
             });
-            res.on('end', _ => {
+            res.on('end', () => {
                 if (res.statusCode == 200) {
                     cb(body);
                 } else {
                     this.log.error('Bad status code loading ' + path + ' (' + res.statusCode + ')');
-                    if (typeof ecb !== 'undefined') { ecb(); };
+                    if (typeof ecb !== 'undefined') { ecb(); }
                 }
             });
         });
         req.on('error', error => {
             this.log.error('Request error: ' + error.code);
-            if (typeof ecb !== 'undefined') { ecb(); };
+            if (typeof ecb !== 'undefined') { ecb(); }
         });
-        req.on('timeout', _ => {
+        req.on('timeout', () => {
             this.log.error('Request timeout!');
             // No need to call ecb here as destroy will trigger 'error' event which does that.
             req.destroy();
@@ -122,7 +122,7 @@ class LegrandEcocompteur extends utils.Adapter {
      */
     parseTICPage(page) {
         // TIC interface kWh reading... note this is presented in watts so divide by 1000
-        let TICReading = page.match(/conso_base = \'(.*)\'/)[1] / 1000;
+        const TICReading = page.match(/conso_base = '(.*)'/)[1] / 1000;
         this.log.debug('kWh: ' + TICReading);
 
         // Create state and set value
@@ -136,7 +136,7 @@ class LegrandEcocompteur extends utils.Adapter {
                 read: true,
                 write: true
             },
-        }, _ => {
+        }, () => {
             this.setState(TICStateName, { val: TICReading, ack: true });
         });
     }
@@ -151,7 +151,7 @@ class LegrandEcocompteur extends utils.Adapter {
         this.parseTICPage(page);
         
         circuits.forEach(circuit => {
-            if (circuit.hasOwnProperty('labelRegexp')) {
+            if ('labelRegexp' in circuit) {
                 // This is a 'real' circuit - parse out the label
                 let label = page.match(circuit.labelRegexp)[1];
                 label = label.trim();
@@ -166,7 +166,7 @@ class LegrandEcocompteur extends utils.Adapter {
                         read: true,
                         write: true
                     }
-                }, _ => {
+                }, () => {
                     this.setState(circuit.labelStateName, { val: label, ack: true });
                 });
             }
@@ -226,18 +226,18 @@ class LegrandEcocompteur extends utils.Adapter {
 
     // Process good response
     parseJSON(body) {
-        let timestamp = Date.now();
+        const timestamp = Date.now();
         // We want the period in hours for kWh calculation
-        let period = (timestamp - this.lastJSONTimestamp) / 1000 / 3600;
+        const period = (timestamp - this.lastJSONTimestamp) / 1000 / 3600;
 
         try {
-            let json = JSON.parse(body);
+            const json = JSON.parse(body);
             this.lastJSONTimestamp = timestamp;
 
             let totalWatts = 0;
             circuits.forEach(circuit => {
                 let watts = 0;
-                if (circuit.hasOwnProperty('jsonWatts')) {
+                if ('jsonWatts' in circuit) {
                     watts = json[circuit.jsonWatts];
                     totalWatts += watts;
                 } else {
@@ -247,7 +247,7 @@ class LegrandEcocompteur extends utils.Adapter {
                 this.setState(circuit.powerStateName, { val: watts, ack: true });
 
                 // Work out kWh since last reading (only if period & last reading are good).
-                let lastWatts = this.lastCircuitWatts[circuit.name];
+                const lastWatts = this.lastCircuitWatts[circuit.name];
                 if (lastWatts > 0 && this.lastJSONTimestamp > 0) {
                     let kWh = lastWatts / 1000 * period;
                     this.log.debug(circuit.name + ': lastWatts ' + lastWatts + ' @ period ' + period + ' = ' + kWh + 'kWh');
@@ -267,7 +267,7 @@ class LegrandEcocompteur extends utils.Adapter {
         } catch (error) {
             this.log.error(error.message);
             this.zeroReadings();
-        };
+        }
     }
 
     /**

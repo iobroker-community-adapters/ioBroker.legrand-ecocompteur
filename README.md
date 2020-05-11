@@ -17,7 +17,7 @@ Adapter for the Legrand Ecocompteur module (aka. Legrand Measurement Concentrato
 
 ## Changelog
 
-### 0.0.1
+### 0.0.2
 * (Robin Rainton) initial release
 
 ## License

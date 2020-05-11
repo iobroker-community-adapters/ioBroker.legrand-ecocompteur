@@ -53,17 +53,6 @@ class LegrandEcocompteur extends utils.Adapter {
          */
         this.lastJSONTimestamp = 0;
         this.lastCircuitWatts = [];
-
-        /*
-         * In some error cases (network unreachable, etc) a request could take longer
-         * to complete than the interval.
-         * Let's use a variable to indicate we're waiting for a network request and
-         * not start any more if one is alreayd in progress.
-         * 
-         * TODO: maybe this should be a counter of some king to make sure it doesn't
-         * get stuck blocking new requests?
-         */
-        this.requestInProgress = false;
     }
 
     /**
@@ -86,40 +75,41 @@ class LegrandEcocompteur extends utils.Adapter {
 
     // Fetch a page from the device and pass body to the callback (or call the error callback if given).
     doRequest(path, cb, ecb) {
-        if (this.requestInProgress) {
-            this.log.warn("Won't issue request, one already in progress!");
-        } else {
-            this.log.debug('Loading ' + path + '...');
-            const options = {
-                host: this.config.ip,
-                port: '80',
-                path: path,
-                method: 'GET'
-            };
+        this.log.debug('Loading ' + path + '...');
+        const options = {
+            host: this.config.ip,
+            port: '80',
+            path: path,
+            method: 'GET',
+            // Sub-second timeout as should be pretty much instant and lower than the lowest polling frequency.
+            // TODO: this should possibly be config variable lower than polling frequency?
+            timeout: 750 
+        };
 
-            this.requestInProgress = true;
-            const req = http.request(options, res => {
-                let body = '';
-                res.on('data', data => {
-                    body += data;
-                });
-                res.on('end', _ => {
-                    this.requestInProgress = false;
-                    if (res.statusCode == 200) {
-                        cb(body);
-                    } else {
-                        this.log.error('Bad status code loading ' + path + ' (' + res.statusCode + ')');
-                        if (typeof ecb !== 'undefined') { ecb(); };
-                    }
-                });
+        const req = http.request(options, res => {
+            let body = '';
+            res.on('data', data => {
+                body += data;
             });
-            req.on('error', error => {
-                this.requestInProgress = false;
-                this.log.error('Request error: ' + error.code);
-                if (typeof ecb !== 'undefined') { ecb(); };
+            res.on('end', _ => {
+                if (res.statusCode == 200) {
+                    cb(body);
+                } else {
+                    this.log.error('Bad status code loading ' + path + ' (' + res.statusCode + ')');
+                    if (typeof ecb !== 'undefined') { ecb(); };
+                }
             });
-            req.end();
-        }
+        });
+        req.on('error', error => {
+            this.log.error('Request error: ' + error.code);
+            if (typeof ecb !== 'undefined') { ecb(); };
+        });
+        req.on('timeout', _ => {
+            this.log.error('Request timeout!');
+            // No need to call ecb here as destroy will trigger 'error' event which does that.
+            req.destroy();
+        });
+        req.end();
     }
 
     hitPage(cb) {
@@ -221,14 +211,17 @@ class LegrandEcocompteur extends utils.Adapter {
         this.doRequest('/inst.json', this.parseJSON.bind(this), this.zeroReadings.bind(this));
     }
 
-    // If we get an error from JSON request zero everything out to prevent bogus values
+    // Zero everything out to prevent bogus values. Happens at shutdown & on JSON read failures.
     zeroReadings() {
-        this.log.info('Setting zero readings');
-        this.lastJSONTimestamp = 0;
-        circuits.forEach(circuit => {
-            this.setState(circuit.powerStateName, { val: 0, ack: true });
-            this.lastCircuitWatts[circuit.name] = 0;
-        });
+        // Only necessary if we have a good reading
+        if (this.lastJSONTimestamp > 0) {
+            this.log.info('Setting zero readings');
+            this.lastJSONTimestamp = 0;
+            circuits.forEach(circuit => {
+                this.setState(circuit.powerStateName, { val: 0, ack: true });
+                this.lastCircuitWatts[circuit.name] = 0;
+            });
+        }
     }
 
     // Process good response
@@ -239,6 +232,8 @@ class LegrandEcocompteur extends utils.Adapter {
 
         try {
             let json = JSON.parse(body);
+            this.lastJSONTimestamp = timestamp;
+
             let totalWatts = 0;
             circuits.forEach(circuit => {
                 let watts = 0;
@@ -273,8 +268,6 @@ class LegrandEcocompteur extends utils.Adapter {
             this.log.error(error.message);
             this.zeroReadings();
         };
-
-        this.lastJSONTimestamp = timestamp;
     }
 
     /**

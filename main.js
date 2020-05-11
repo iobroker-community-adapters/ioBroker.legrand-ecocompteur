@@ -53,6 +53,10 @@ class LegrandEcocompteur extends utils.Adapter {
          */
         this.lastJSONTimestamp = 0;
         this.lastCircuitWatts = [];
+
+        // Timers (to clear on cleanup)
+        this.JSONTimer;
+        this.IndexTimer;
     }
 
     /**
@@ -201,10 +205,10 @@ class LegrandEcocompteur extends utils.Adapter {
          * If we get here then the first page fetch was a success...
          * ... so start up the JSON interval timer.
          */
-        setInterval(this.hitJSON.bind(this), this.config.pollJSON * 1000);
+        this.JSONTimer = setInterval(this.hitJSON.bind(this), this.config.pollJSON * 1000);
 
         // .. and timer for subsiquent page fetches (just for TIC reading).
-        setInterval(this.hitPage.bind(this), this.config.pollIndex * 1000, this.parseTICPage.bind(this));
+        this.IndexTimer = setInterval(this.hitPage.bind(this), this.config.pollIndex * 1000, this.parseTICPage.bind(this));
     }
 
     hitJSON() {
@@ -278,6 +282,8 @@ class LegrandEcocompteur extends utils.Adapter {
         try {
             this.log.info('cleaned everything up...');
             this.zeroReadings();
+            clearInterval(this.JSONTimer);
+            clearInterval(this.IndexTimer);
             callback();
         } catch (e) {
             callback();

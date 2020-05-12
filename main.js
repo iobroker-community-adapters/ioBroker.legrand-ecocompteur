@@ -236,13 +236,25 @@ class LegrandEcocompteur extends utils.Adapter {
 
         try {
             const json = JSON.parse(body);
-            this.lastJSONTimestamp = timestamp;
 
             let totalWatts = 0;
             circuits.forEach(circuit => {
                 let watts = 0;
                 if ('jsonWatts' in circuit) {
                     watts = json[circuit.jsonWatts];
+                    // Validation. Values over maximum are assumed bad so zero out.
+                    if (this.config.validationMax > 0) {
+                        if (watts > this.config.validationMax) {
+                            // Keep the last reading... unless there is none and then zero it out
+                            if (this.lastJSONTimestamp > 0) {
+                                this.log.warn('Suprious reading from ' + circuit.name + ': ' + watts + ' keeping previous value');
+                                watts = this.lastCircuitWatts[circuit.name];
+                            } else {
+                                this.log.warn('Suprious reading from ' + circuit.name + ': ' + watts + ' setting to zero');
+                                watts = 0;
+                            }
+                        }
+                    }
                     totalWatts += watts;
                 } else {
                     // Special case for total which must come last in the list of circuits!
@@ -268,6 +280,7 @@ class LegrandEcocompteur extends utils.Adapter {
                 }
                 this.lastCircuitWatts[circuit.name] = watts;
             });
+            this.lastJSONTimestamp = timestamp;
         } catch (error) {
             this.log.error(error.message);
             this.zeroReadings();

@@ -15,6 +15,27 @@
 
 Adapter for the Legrand Ecocompteur module (aka. Legrand Measurement Concentrator EMDX³ 412000).
 
+This is a power measurement device with it's own web interface. The adapter utilises that web interface by:
+
+- Polling for instantaneous power readings (read in a JSON response).
+- Polling the device's index page to read the TIC interface. TIC stands for Télé-Information Client which is a French construct. This value is generally read from a utility billing meter connected to the Ecocompteur.
+
+These objects are created for each of the 5 circuits the Ecocompteur reads plus overall total:
+
+- Instantaneous power (in Watts).
+- Total cumulated energy measured while the adapter was running (in kWh).
+
+A further object is created to store the TIC interface value.
+
+### Configuration
+
+The following configuration is required:
+
+- IP Address of device.
+- JSON polling interval (in seconds).
+- Index polling interval (in seconds).
+- Validation: maximum circuit reading (in Watts).
+
 ## Changelog
 
 ### 0.0.4

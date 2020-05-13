@@ -16,6 +16,10 @@
 Adapter for the Legrand Ecocompteur module (aka. Legrand Measurement Concentrator EMDX³ 412000).
 
 ## Changelog
+
+### 0.0.4
+* (Robin Rainton) Added reading validation filter.
+
 ### 0.0.3
 * (Robin Rainton) initial clean release.
 

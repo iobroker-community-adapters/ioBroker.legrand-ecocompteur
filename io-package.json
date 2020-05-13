@@ -1,19 +1,31 @@
 {
     "common": {
         "name": "legrand-ecocompteur",
-        "version": "0.0.3",
+        "version": "0.0.4",
         "news": {
+            "0.0.4": {
+                "en": "Added reading validation filter.",
+                "de": "Lesevalidierungsfilter hinzugefügt.",
+                "ru": "Добавлен фильтр проверки чтения.",
+                "pt": "Adicionado filtro de validação de leitura.",
+                "nl": "Leesvalidatiefilter toegevoegd.",
+                "fr": "Ajout d'un filtre de validation de lecture.",
+                "it": "Aggiunto filtro di convalida della lettura.",
+                "es": "Se agregó un filtro de validación de lectura.",
+                "pl": "Dodano filtr sprawdzania poprawności odczytu.",
+                "zh-cn": "添加了阅读验证过滤器。"
+            },
             "0.0.3": {
-                "en": "initial release",
-                "de": "Erstveröffentlichung",
-                "ru": "Начальная версия",
-                "pt": "lançamento inicial",
-                "nl": "Eerste uitgave",
-                "fr": "Première version",
-                "it": "Versione iniziale",
-                "es": "Versión inicial",
-                "pl": "Pierwsze wydanie",
-                "zh-cn": "首次出版"
+                "en": "Initial release.",
+                "de": "Erstveröffentlichung.",
+                "ru": "Начальная версия.",
+                "pt": "lançamento inicial.",
+                "nl": "Eerste uitgave.",
+                "fr": "Première version.",
+                "it": "Versione iniziale.",
+                "es": "Versión inicial.",
+                "pl": "Pierwsze wydanie.",
+                "zh-cn": "首次出版。"
             }
         },
         "title": "Legrand Ecocompteur",

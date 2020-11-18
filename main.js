@@ -109,7 +109,7 @@ class LegrandEcocompteur extends utils.Adapter {
         req.on('timeout', () => {
             this.log.error('Request timeout!');
             // No need to call ecb here as destroy will trigger 'error' event which does that.
-            req.destroy();
+            req.destroy(new Error('timeout'));
         });
         req.end();
     }

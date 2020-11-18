@@ -87,7 +87,7 @@ class LegrandEcocompteur extends utils.Adapter {
             method: 'GET',
             // Sub-second timeout as should be pretty much instant and lower than the lowest polling frequency.
             // TODO: this should possibly be config variable lower than polling frequency?
-            timeout: 750 
+            timeout: 750
         };
 
         const req = http.request(options, res => {
@@ -153,7 +153,7 @@ class LegrandEcocompteur extends utils.Adapter {
     parseFullPage(page) {
         // Handle TIC reading
         this.parseTICPage(page);
-        
+
         circuits.forEach(circuit => {
             if ('labelRegexp' in circuit) {
                 // This is a 'real' circuit - parse out the label
@@ -300,36 +300,6 @@ class LegrandEcocompteur extends utils.Adapter {
             callback();
         } catch (e) {
             callback();
-        }
-    }
-
-    /**
-     * Is called if a subscribed object changes
-     * @param {string} id
-     * @param {ioBroker.Object | null | undefined} obj
-     */
-    onObjectChange(id, obj) {
-        if (obj) {
-            // The object was changed
-            this.log.info(`object ${id} changed: ${JSON.stringify(obj)}`);
-        } else {
-            // The object was deleted
-            this.log.info(`object ${id} deleted`);
-        }
-    }
-
-    /**
-     * Is called if a subscribed state changes
-     * @param {string} id
-     * @param {ioBroker.State | null | undefined} state
-     */
-    onStateChange(id, state) {
-        if (state) {
-            // The state was changed
-            this.log.info(`state ${id} changed: ${state.val} (ack = ${state.ack})`);
-        } else {
-            // The state was deleted
-            this.log.info(`state ${id} deleted`);
         }
     }
 }

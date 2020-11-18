@@ -42,8 +42,6 @@ class LegrandEcocompteur extends utils.Adapter {
             name: 'legrand-ecocompteur',
         });
         this.on('ready', this.onReady.bind(this));
-        this.on('objectChange', this.onObjectChange.bind(this));
-        this.on('stateChange', this.onStateChange.bind(this));
         this.on('unload', this.onUnload.bind(this));
 
         /*

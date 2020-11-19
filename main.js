@@ -320,12 +320,14 @@ class LegrandEcocompteur extends utils.Adapter {
      * Is called when adapter shuts down - callback has to be called under any circumstances!
      * @param {() => void} callback
      */
-    async onUnload(callback) {
+    onUnload(callback) {
         try {
             this.log.info('cleaned everything up...');
-            await clearIntervalAsync(this.interval);
-            await this.zeroReadings();
-            callback();
+            clearIntervalAsync(this.interval).then(() => {
+                this.zeroReadings().then(() => {
+                    callback();
+                });
+            });
         } catch (e) {
             callback();
         }

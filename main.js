@@ -11,6 +11,13 @@ const utils = require('@iobroker/adapter-core');
 // The device communicates over http only
 const http = require('http');
 
+// Default options for HTTP get
+const getOptions = {
+    // Sub-second timeout as should be pretty much instant and lower than the lowest polling frequency.
+    // TODO: this should possibly be config variable lower than polling frequency?
+    timeout: 750
+};
+
 /*
  * Configuration for each circuit.
  * - Regexp to find label on index.
@@ -61,9 +68,9 @@ class LegrandEcocompteur extends utils.Adapter {
      * Is called when databases are connected and adapter received configuration.
      */
     async onReady() {
-        // Error if we don't have the target IP address configured
-        if (this.config.ip && this.config.pollJSON && this.config.pollIndex) {
-            this.log.info('ip: ' + this.config.ip + ' JSON Poll: ' + this.config.pollJSON + ' Index Poll: ' + this.config.pollIndex);
+        // Error if we don't have configuration
+        if (this.config.baseURL && this.config.pollJSON && this.config.pollIndex) {
+            this.log.info('baseURL: ' + this.config.baseURL + ' JSON Poll: ' + this.config.pollJSON + ' Index Poll: ' + this.config.pollIndex);
 
             /**
              * Hit the index page first to parse out circuit names, etc.
@@ -78,17 +85,8 @@ class LegrandEcocompteur extends utils.Adapter {
     // Fetch a page from the device and pass body to the callback (or call the error callback if given).
     doRequest(path, cb, ecb) {
         this.log.debug('Loading ' + path + '...');
-        const options = {
-            host: this.config.ip,
-            port: '80',
-            path: path,
-            method: 'GET',
-            // Sub-second timeout as should be pretty much instant and lower than the lowest polling frequency.
-            // TODO: this should possibly be config variable lower than polling frequency?
-            timeout: 750
-        };
 
-        const req = http.request(options, res => {
+        const req = http.get(new URL(path, this.config.baseURL), getOptions, res => {
             let body = '';
             res.on('data', data => {
                 body += data;
@@ -103,7 +101,7 @@ class LegrandEcocompteur extends utils.Adapter {
             });
         });
         req.on('error', error => {
-            this.log.error('Request error: ' + error.code);
+            this.log.error('Request error: ' + error.message);
             if (typeof ecb !== 'undefined') { ecb(); }
         });
         req.on('timeout', () => {
@@ -115,7 +113,7 @@ class LegrandEcocompteur extends utils.Adapter {
     }
 
     hitPage(cb) {
-        this.doRequest('/1.html', cb);
+        this.doRequest('1.html', cb);
     }
 
     /*
@@ -210,7 +208,7 @@ class LegrandEcocompteur extends utils.Adapter {
     }
 
     hitJSON() {
-        this.doRequest('/inst.json', this.parseJSON.bind(this), this.zeroReadings.bind(this));
+        this.doRequest('inst.json', this.parseJSON.bind(this), this.zeroReadings.bind(this));
     }
 
     // Zero everything out to prevent bogus values. Happens at shutdown & on JSON read failures.

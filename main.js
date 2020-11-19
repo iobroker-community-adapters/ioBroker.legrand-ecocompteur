@@ -28,16 +28,23 @@ const getOptions = {
  * Total must come last!
  *
  * Maybe we should do this in a loop in the constructor but what's the point? ;)
+ * 
+ * You'd think it would be more efficient to have one huge regexp and match that, extracting
+ * TIC value and all the circuit labels & values in one go, but tested this and actually
+ * negligable difference between that and running multiple matches. The latter being
+ * more elegant (if you can call that) to code though so staying with this.
  */
 
 const circuits = [
-    { name: 'c1', powerStateName: 'c1.power', energyStateName: 'c1.energy', labelStateName: 'c1.label', labelRegexp: 'c1Name = getLabel\\("(.*)"', jsonWatts: 'data1' },
-    { name: 'c2', powerStateName: 'c2.power', energyStateName: 'c2.energy', labelStateName: 'c2.label', labelRegexp: 'c2Name = getLabel\\("(.*)"', jsonWatts: 'data2' },
-    { name: 'c3', powerStateName: 'c3.power', energyStateName: 'c3.energy', labelStateName: 'c3.label', labelRegexp: 'c3Name = getLabel\\("(.*)"', jsonWatts: 'data3' },
-    { name: 'c4', powerStateName: 'c4.power', energyStateName: 'c4.energy', labelStateName: 'c4.label', labelRegexp: 'c4Name = getLabel\\("(.*)"', jsonWatts: 'data4' },
-    { name: 'c5', powerStateName: 'c5.power', energyStateName: 'c5.energy', labelStateName: 'c5.label', labelRegexp: 'c5Name = getLabel\\("(.*)"', jsonWatts: 'data5' },
+    { name: 'c1', powerStateName: 'c1.power', energyStateName: 'c1.energy', labelStateName: 'c1.label', lpRegexp: new RegExp(/c1Name = getLabel\("(.*?) *"\);\s*?c1 = (\d+)/, 's'), jsonWatts: 'data1' },
+    { name: 'c2', powerStateName: 'c2.power', energyStateName: 'c2.energy', labelStateName: 'c2.label', lpRegexp: new RegExp(/c2Name = getLabel\("(.*?) *"\);\s*?c2 = (\d+)/, 's'), jsonWatts: 'data2' },
+    { name: 'c3', powerStateName: 'c3.power', energyStateName: 'c3.energy', labelStateName: 'c3.label', lpRegexp: new RegExp(/c3Name = getLabel\("(.*?) *"\);\s*?c3 = (\d+)/, 's'), jsonWatts: 'data3' },
+    { name: 'c4', powerStateName: 'c4.power', energyStateName: 'c4.energy', labelStateName: 'c4.label', lpRegexp: new RegExp(/c4Name = getLabel\("(.*?) *"\);\s*?c4 = (\d+)/, 's'), jsonWatts: 'data4' },
+    { name: 'c5', powerStateName: 'c5.power', energyStateName: 'c5.energy', labelStateName: 'c5.label', lpRegexp: new RegExp(/c5Name = getLabel\("(.*?) *"\);\s*?c5 = (\d+)/, 's'), jsonWatts: 'data5' },
     { name: 'Total', powerStateName: 'cTotal.power', energyStateName: 'cTotal.energy' },
+    { name: 'TIC', energyStateName: 'TICReading', energyRegexp: "conso_base = '(.*)'", scale: 0.001 },
 ];
+const circuitTotal = 5; // Must match element number above
 
 class LegrandEcocompteur extends utils.Adapter {
 
@@ -51,12 +58,6 @@ class LegrandEcocompteur extends utils.Adapter {
         this.on('ready', this.onReady.bind(this));
         this.on('unload', this.onUnload.bind(this));
 
-        /*
-         * For kWh calculations, keep track of:
-         * - Timestamp of last valid JSON reading.
-         * - Array (empty to be filled later) of last readings.
-         */
-        this.lastJSONTimestamp = 0;
         this.lastCircuitWatts = [];
 
         // Timers (to clear on cleanup)
@@ -68,15 +69,67 @@ class LegrandEcocompteur extends utils.Adapter {
      * Is called when databases are connected and adapter received configuration.
      */
     async onReady() {
+        // Create states we're going to need
+        circuits.forEach(async (circuit) => {
+            if ('labelStateName' in circuit) {
+                await this.setObjectNotExistsAsync(circuit.labelStateName, {
+                    type: 'state',
+                    common: {
+                        name: circuit.name + ' label',
+                        type: 'string',
+                        role: 'text',
+                        read: true,
+                        write: true
+                    }
+                });
+            }
+
+            if ('powerStateName' in circuit) {
+                // For kWh calculations, for each circuit, keep track of:
+                // - Timestamp of last valid reading.
+                // - Value of last valid reading.
+                // Only for circuits with power input which is why is here.
+
+                circuit.lastTimestamp = 0;
+                circuit.lastPower = 0;
+
+                await this.setObjectNotExistsAsync(circuit.powerStateName, {
+                    type: 'state',
+                    common: {
+                        name: circuit.name + ' instantaneous power',
+                        type: 'number',
+                        role: 'value',
+                        unit: 'W',
+                        read: true,
+                        write: true
+                    }
+                });
+            }
+            if ('energyStateName' in circuit) {
+                await this.setObjectNotExistsAsync(circuit.energyStateName, {
+                    type: 'state',
+                    common: {
+                        name: circuit.name + ' energy',
+                        type: 'number',
+                        role: 'value',
+                        unit: 'kWh',
+                        read: true,
+                        write: true
+                    }
+                });
+            }
+        });
+
         // Error if we don't have configuration
         if (this.config.baseURL && this.config.pollJSON && this.config.pollIndex) {
             this.log.info('baseURL: ' + this.config.baseURL + ' JSON Poll: ' + this.config.pollJSON + ' Index Poll: ' + this.config.pollIndex);
 
-            /**
-             * Hit the index page first to parse out circuit names, etc.
-             * This also starts full timeout polling process.
-             */
+            // Hit the index page first to parse out circuit names, etc.
             this.hitPage(this.parseFullPage.bind(this));
+
+            // Start interval timers for subsiquent fetches
+            this.IndexTimer = setInterval(this.hitPage.bind(this), this.config.pollIndex * 1000, this.parseFullPage.bind(this));
+            this.JSONTimer = setInterval(this.hitJSON.bind(this), this.config.pollJSON * 1000, this.parseJSON.bind(this));
         } else {
             this.log.error('Please configure the adapter settings');
         }
@@ -116,29 +169,58 @@ class LegrandEcocompteur extends utils.Adapter {
         this.doRequest('1.html', cb);
     }
 
-    /*
-     * Function to pulls out the TIC reading and updates that state.
-     * This is the back on every page load (except first when it's called anyhow).
-     */
-    parseTICPage(page) {
-        // TIC interface kWh reading... note this is presented in watts so divide by 1000
-        const TICReading = page.match(/conso_base = '(.*)'/)[1] / 1000;
-        this.log.debug('kWh: ' + TICReading);
+    // As we store the last valid readings on a per-circuit basis (when calculating
+    // energy)... then validation can be passed that circuit and it's last valid
+    // value can be used if spurious.
+    validateCircuitPower(circuit, power) {
+        if (this.config.validationMax > 0) {
+            if (power > this.config.validationMax) {
+                // ... replacing invalid readings with the last good reading
+                if (circuit.lastTimestamp > 0) {
+                    this.log.warn(`Suprious reading from ${circuit.name}: ${power} keeping previous value`);
+                    power = circuit.lastPower;
+                } else {
+                    // ... unless there is none and then zero it out
+                    this.log.warn(`Suprious reading from ${circuit.name}: ${power} setting to zero`);
+                    power = 0;
+                }
+            }
+        }
+        return power;
+    }
 
-        // Create state and set value
-        const TICStateName = 'TICReading';
-        this.setObjectNotExists(TICStateName, {
-            type: 'state',
-            common: {
-                name: 'TIC Reading',
-                type: 'number',
-                role: 'value',
-                read: true,
-                write: true
-            },
-        }, () => {
-            this.setState(TICStateName, { val: TICReading, ack: true });
-        });
+    // Whenever a circuit reading is recevied this method will update
+    // it's kWh energy total
+    updateCircuitEnergy(circuit, timestamp, power) {
+        if (circuit.lastTimestamp > 0) {
+            // We want the period in hours for kWh calculation
+            const period = (timestamp - circuit.lastTimestamp) / 1000 / 3600;
+
+            let kWh = power / 1000 * period;
+            this.log.debug(`${circuit.name} - lastPower: ${circuit.lastPower} @ period: ${period} = ${kWh} kWh`);
+            this.getState(circuit.energyStateName, (err, state) => {
+                if (!err) {
+                    if (state) {
+                        kWh += state.val;
+                    }
+                    this.setStateChanged(circuit.energyStateName, { val: kWh, ack: true });
+                } else {
+                    this.log.error(err);
+                }
+            });
+
+        }
+        // Remember this reading value & timestamp for next cycle
+        circuit.lastTimestamp = timestamp;
+        circuit.lastPower = power;
+    }
+
+    // Store total and calculate energy
+    updateTotal(timestamp, power) {
+        const circuit = circuits[circuitTotal];
+        // Special case - update total power
+        this.updateCircuitEnergy(circuit, timestamp, power);
+        this.setStateChanged(circuit.powerStateName, { val: power, ack: true });
     }
 
     /*
@@ -147,139 +229,79 @@ class LegrandEcocompteur extends utils.Adapter {
      * This is the callback only on the first fetch.
      */
     parseFullPage(page) {
-        // Handle TIC reading
-        this.parseTICPage(page);
+        const timestamp = Date.now();
 
+        let totalPower = 0;
         circuits.forEach(circuit => {
-            if ('labelRegexp' in circuit) {
-                // This is a 'real' circuit - parse out the label
-                let label = page.match(circuit.labelRegexp)[1];
-                label = label.trim();
-                this.log.debug('Circuit ' + circuit.name + ': ' + label);
+            if ('lpRegexp' in circuit) {
+                const matches = page.match(circuit.lpRegexp);
+                if (!matches) {
+                    this.log.error(`No matches for in page for ${circuit.name}`);
+                    // TODO: zero out this value?
+                } else {
+                    const label = matches[1];
+                    const power = this.validateCircuitPower(circuit, Number(matches[2]));
+                    this.log.debug(`${circuit.name} (${label}): ${power}`);
+                    this.setStateChanged(circuit.labelStateName, { val: label, ack: true });
+                    this.setStateChanged(circuit.powerStateName, { val: power, ack: true });
+                    totalPower += power;
 
-                this.setObjectNotExists(circuit.labelStateName, {
-                    type: 'state',
-                    common: {
-                        name: circuit.name + ' label',
-                        type: 'string',
-                        role: 'text',
-                        read: true,
-                        write: true
-                    }
-                }, () => {
-                    this.setState(circuit.labelStateName, { val: label, ack: true });
-                });
+                    this.updateCircuitEnergy(circuit, timestamp, power);
+                }
             }
-
-            // Always create state for instantaneous power reading to use later...
-            this.setObjectNotExists(circuit.powerStateName, {
-                type: 'state',
-                common: {
-                    name: circuit.name + ' instantaneous power',
-                    type: 'number',
-                    role: 'value',
-                    unit: 'W',
-                    read: true,
-                    write: true
+            if ('energyRegexp' in circuit) {
+                const matches = page.match(circuit.energyRegexp);
+                if (!matches) {
+                    this.log.error(`No matches for in page for ${circuit.name}`);
                 }
-            });
-            /// ... and total energy for this circuit
-            this.setObjectNotExists(circuit.energyStateName, {
-                type: 'state',
-                common: {
-                    name: circuit.name + ' energy',
-                    type: 'number',
-                    role: 'value',
-                    unit: 'kWh',
-                    read: true,
-                    write: true
-                }
-            });
+                const energy = matches[1] * circuit.scale;
+                this.log.debug(`${circuit.name}: ${energy}`);
+                this.setStateChanged(circuit.energyStateName, { val: energy, ack: true });
+            }
         });
 
-        /*
-         * If we get here then the first page fetch was a success...
-         * ... so start up the JSON interval timer.
-         */
-        this.JSONTimer = setInterval(this.hitJSON.bind(this), this.config.pollJSON * 1000);
-
-        // .. and timer for subsiquent page fetches (just for TIC reading).
-        this.IndexTimer = setInterval(this.hitPage.bind(this), this.config.pollIndex * 1000, this.parseTICPage.bind(this));
+        // Don't forget total
+        this.updateTotal(timestamp, totalPower);
     }
 
     hitJSON() {
         this.doRequest('inst.json', this.parseJSON.bind(this), this.zeroReadings.bind(this));
     }
 
-    // Zero everything out to prevent bogus values. Happens at shutdown & on JSON read failures.
+    // Zero everything out to prevent bogus values. Happens at shutdown.
     zeroReadings() {
-        // Only necessary if we have a good reading
-        if (this.lastJSONTimestamp > 0) {
-            this.log.info('Setting zero readings');
-            this.lastJSONTimestamp = 0;
-            circuits.forEach(circuit => {
+        this.log.info('Setting zero readings');
+        this.lastJSONTimestamp = 0;
+        circuits.forEach((circuit) => {
+            if ('powerStateName' in circuit) {
                 this.setState(circuit.powerStateName, { val: 0, ack: true });
-                this.lastCircuitWatts[circuit.name] = 0;
-            });
-        }
+            }
+        });
     }
 
     // Process good response
     parseJSON(body) {
         const timestamp = Date.now();
-        // We want the period in hours for kWh calculation
-        const period = (timestamp - this.lastJSONTimestamp) / 1000 / 3600;
 
         try {
             const json = JSON.parse(body);
 
-            let totalWatts = 0;
+            let totalPower = 0;
             circuits.forEach(circuit => {
-                let watts = 0;
                 if ('jsonWatts' in circuit) {
-                    watts = json[circuit.jsonWatts];
-                    // Validation. Values over maximum are assumed bad so zero out.
-                    if (this.config.validationMax > 0) {
-                        if (watts > this.config.validationMax) {
-                            // Keep the last reading... unless there is none and then zero it out
-                            if (this.lastJSONTimestamp > 0) {
-                                this.log.warn('Suprious reading from ' + circuit.name + ': ' + watts + ' keeping previous value');
-                                watts = this.lastCircuitWatts[circuit.name];
-                            } else {
-                                this.log.warn('Suprious reading from ' + circuit.name + ': ' + watts + ' setting to zero');
-                                watts = 0;
-                            }
-                        }
-                    }
-                    totalWatts += watts;
-                } else {
-                    // Special case for total which must come last in the list of circuits!
-                    watts = totalWatts;
-                }
-                this.setState(circuit.powerStateName, { val: watts, ack: true });
+                    const power = this.validateCircuitPower(circuit, json[circuit.jsonWatts]);
+                    this.log.debug(`${circuit.name}: ${power}`);
+                    this.setState(circuit.powerStateName, { val: power, ack: true });
+                    totalPower += power;
 
-                // Work out kWh since last reading (only if period & last reading are good).
-                const lastWatts = this.lastCircuitWatts[circuit.name];
-                if (lastWatts > 0 && this.lastJSONTimestamp > 0) {
-                    let kWh = lastWatts / 1000 * period;
-                    this.log.debug(circuit.name + ': lastWatts ' + lastWatts + ' @ period ' + period + ' = ' + kWh + 'kWh');
-                    this.getState(circuit.energyStateName, (err, state) => {
-                        if (!err) {
-                            if (state) {
-                                kWh += state.val;
-                            }
-                            this.setState(circuit.energyStateName, { val: kWh, ack: true });
-                        } else {
-                            this.log.error(err);
-                        }
-                    });
+                    this.updateCircuitEnergy(circuit, timestamp, power);
                 }
-                this.lastCircuitWatts[circuit.name] = watts;
             });
-            this.lastJSONTimestamp = timestamp;
+            // Don't forget total
+            this.updateTotal(timestamp, totalPower);
         } catch (error) {
-            this.log.error(error.message);
-            this.zeroReadings();
+            // TODO: zero out readings?
+            this.log.error(error);
         }
     }
 

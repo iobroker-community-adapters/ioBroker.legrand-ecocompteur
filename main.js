@@ -63,12 +63,20 @@ class LegrandEcocompteur extends utils.Adapter {
         this.lastJSON = 0;
     }
 
-    /**
-     * Is called when databases are connected and adapter received configuration.
-     */
-    async onReady() {
-        // Create states we're going to need
+    // Create all the objects & states
+    async createObjects() {
+        this.log.debug('Creating adapter objects');
         circuits.forEach(async (circuit) => {
+            if ('powerStateName' in circuit || 'labelStateName' in circuit) {
+                // Need to create a channel for ths circuit
+                await this.setObjectNotExistsAsync(circuit.name, {
+                    type: 'channel',
+                    common: {
+                        name: circuit.name,
+                        role: 'info'
+                    }
+                });
+            }
             if ('labelStateName' in circuit) {
                 await this.setObjectNotExistsAsync(circuit.labelStateName, {
                     type: 'state',
@@ -117,45 +125,51 @@ class LegrandEcocompteur extends utils.Adapter {
                 });
             }
         });
+    }
 
+    /**
+     * Is called when databases are connected and adapter received configuration.
+     */
+    onReady() {
         // Error if we don't have configuration
         if (this.config.baseURL && this.config.pollJSON && this.config.pollIndex) {
             this.log.info('baseURL: ' + this.config.baseURL + ' JSON Poll: ' + this.config.pollJSON + ' Index Poll: ' + this.config.pollIndex);
 
-            // Hit the index page first to parse out circuit names, etc.
-            await this.hitIndex();
+            this.createObjects().then(() => {
+                this.hitIndex().then(() => {
+                    this.log.debug('Initial fetch done, starting interval...');
+                    // Configured timers in ms
+                    const pollIndex = this.config.pollIndex * 1000;
+                    const pollJSON = this.config.pollJSON * 1000;
 
-            // Configured timers in ms
-            const pollIndex = this.config.pollIndex * 1000;
-            const pollJSON = this.config.pollJSON * 1000;
+                    // Start interval timers for subsiquent fetches
+                    this.interval = setIntervalAsync(async () => {
+                        // Hit JSON or Index depending on which is most overdue
+                        const now = Date.now();
+                        if ((now - this.lastJSON - pollJSON) > (now - this.lastIndex - pollIndex)) {
+                            // JSON is most overdue
+                            await this.hitJSON();
+                        } else {
+                            // Index is most overdue
+                            await this.hitIndex();
+                        }
+                    }, Math.min(pollIndex, pollJSON));
+                });
+            });
 
-            // Start interval timers for subsiquent fetches
-            this.interval = setIntervalAsync(async () => {
-                // Hit JSON or Index depending on which is most overdue
-                const now = Date.now();
-                if ((now - this.lastJSON - pollJSON) > (now - this.lastIndex - pollIndex)) {
-                    // JSON is most overdue
-                    await this.hitJSON();
-                } else {
-                    // Index is most overdue
-                    await this.hitIndex();
-                }
-            }, Math.min(pollIndex, pollJSON));
         } else {
             this.log.error('Please configure the adapter settings');
         }
     }
 
     async hitIndex() {
-        this.doRequest('1.html').then(async (body) => {
-            await this.parseIndex(body);
-        });
+        const body = await this.doRequest('1.html');
+        await this.parseIndex(body);
     }
 
     async hitJSON() {
-        this.doRequest('inst.json').then(async (body) => {
-            await this.parseJSON(body);
-        });
+        const body = await this.doRequest('inst.json');
+        await this.parseJSON(body);
     }
 
     // Fetch a page from the device and pass body to the callback (or call the error callback if given).
@@ -220,7 +234,11 @@ class LegrandEcocompteur extends utils.Adapter {
             let kWh = power / 1000 * period;
             this.log.debug(`${circuit.name} - lastPower: ${circuit.lastPower} @ period: ${period} = ${kWh} kWh`);
             const state = await this.getStateAsync(circuit.energyStateName);
-            kWh += state.val;
+            if (!state || !state.val) {
+                this.log.warn(`state is null for ${circuit.name} - it will be reset`);
+            } else {
+                kWh += state.val;
+            }
             await this.setStateChangedAsync(circuit.energyStateName, { val: kWh, ack: true });
         }
         // Remember this reading value & timestamp for next cycle

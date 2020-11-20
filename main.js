@@ -130,33 +130,31 @@ class LegrandEcocompteur extends utils.Adapter {
     /**
      * Is called when databases are connected and adapter received configuration.
      */
-    onReady() {
+    async onReady() {
         // Error if we don't have configuration
         if (this.config.baseURL && this.config.pollJSON && this.config.pollIndex) {
             this.log.info('baseURL: ' + this.config.baseURL + ' JSON Poll: ' + this.config.pollJSON + ' Index Poll: ' + this.config.pollIndex);
 
-            this.createObjects().then(() => {
-                this.hitIndex().then(() => {
-                    this.log.debug('Initial fetch done, starting interval...');
-                    // Configured timers in ms
-                    const pollIndex = this.config.pollIndex * 1000;
-                    const pollJSON = this.config.pollJSON * 1000;
+            await this.createObjects();
+            await this.hitIndex();
+            this.log.debug('Initial fetch done, starting interval...');
 
-                    // Start interval timers for subsiquent fetches
-                    this.interval = setIntervalAsync(async () => {
-                        // Hit JSON or Index depending on which is most overdue
-                        const now = Date.now();
-                        if ((now - this.lastJSON - pollJSON) > (now - this.lastIndex - pollIndex)) {
-                            // JSON is most overdue
-                            await this.hitJSON();
-                        } else {
-                            // Index is most overdue
-                            await this.hitIndex();
-                        }
-                    }, Math.min(pollIndex, pollJSON));
-                });
-            });
+            // Configured timers in ms
+            const pollIndex = this.config.pollIndex * 1000;
+            const pollJSON = this.config.pollJSON * 1000;
 
+            // Start interval timers for subsiquent fetches
+            this.interval = setIntervalAsync(async () => {
+                // Hit JSON or Index depending on which is most overdue
+                const now = Date.now();
+                if ((now - this.lastJSON - pollJSON) > (now - this.lastIndex - pollIndex)) {
+                    // JSON is most overdue
+                    await this.hitJSON();
+                } else {
+                    // Index is most overdue
+                    await this.hitIndex();
+                }
+            }, Math.min(pollIndex, pollJSON));
         } else {
             this.log.error('Please configure the adapter settings');
         }

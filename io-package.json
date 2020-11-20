@@ -93,8 +93,8 @@
         {
             "js-controller": ">=1.4.2"
         }
-    ]
-},
-"objects": [],
-"instanceObjects": []
+    ],
+    "native": {},
+    "objects": [],
+    "instanceObjects": []
 }

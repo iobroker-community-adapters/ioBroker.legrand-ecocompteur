@@ -31,7 +31,7 @@ A further object is created to store the TIC interface value.
 
 Through testing it has been noted that the Ecocompteur has a rather fragile IP stack. Sometimes the stack can 'hang' and stop responding to requests, although in the author's experience, that was tracked to non-RFC compliant requests coming from another home automation device.
 
-Nevertheless, it would be prudent to mitigate for this risk by placing the device behind a simple Nginx micro-caching reverse proxy. Example Nginx configuration for an Ecocompteur at http://192.168.0.10/ (hence set *BaseURL* settings for this adapter to *http://&lt;Nginx address&gt;/le/*):
+Nevertheless, it would be prudent to mitigate for this risk by placing the device behind a simple Nginx micro-caching reverse proxy. Example Nginx configuration for an Ecocompteur at http://192.168.0.10/ (hence set *BaseURL* settings for this adapter to *http://&lt;Nginx address&gt;:8080/le/*):
 
 ```
 proxy_cache_path /tmp/cache keys_zone=cache:32k levels=1 inactive=10s max_size=256k;

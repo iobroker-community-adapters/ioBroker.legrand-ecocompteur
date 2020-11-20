@@ -1,9 +1,9 @@
 {
     "common": {
         "name": "legrand-ecocompteur",
-        "version": "0.0.5",
+        "version": "0.0.6",
         "news": {
-            "0.0.5": {
+            "0.0.6": {
                 "en": "Change IP address setting to base URL (settings will need to be updated). Fixed timeout handling. Parse readings from index HTML. Refactor to use more promises & single interval timer.",
                 "de": "Ändern Sie die IP-Adresseinstellung in die Basis-URL (die Einstellungen müssen aktualisiert werden). Zeitüberschreitung behoben. Analysieren Sie die Messwerte aus dem Index-HTML. Refactor, um mehr Versprechen und Timer mit einem Intervall zu verwenden.",
                 "ru": "Измените настройку IP-адреса на базовый URL (необходимо обновить настройки). Исправлена обработка тайм-аута. Разобрать показания из индекса HTML. Выполните рефакторинг, чтобы использовать больше обещаний и одноинтервальный таймер.",

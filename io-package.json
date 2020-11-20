@@ -1,91 +1,100 @@
 {
     "common": {
         "name": "legrand-ecocompteur",
-        "version": "0.0.4",
+        "version": "0.0.5",
         "news": {
-            "0.0.4": {
-                "en": "Added reading validation filter.",
-                "de": "Lesevalidierungsfilter hinzugefügt.",
-                "ru": "Добавлен фильтр проверки чтения.",
-                "pt": "Adicionado filtro de validação de leitura.",
-                "nl": "Leesvalidatiefilter toegevoegd.",
-                "fr": "Ajout d'un filtre de validation de lecture.",
-                "it": "Aggiunto filtro di convalida della lettura.",
-                "es": "Se agregó un filtro de validación de lectura.",
-                "pl": "Dodano filtr sprawdzania poprawności odczytu.",
-                "zh-cn": "添加了阅读验证过滤器。"
-            },
-            "0.0.3": {
-                "en": "Initial release.",
-                "de": "Erstveröffentlichung.",
-                "ru": "Начальная версия.",
-                "pt": "lançamento inicial.",
-                "nl": "Eerste uitgave.",
-                "fr": "Première version.",
-                "it": "Versione iniziale.",
-                "es": "Versión inicial.",
-                "pl": "Pierwsze wydanie.",
-                "zh-cn": "首次出版。"
+            "0.0.5": {
+                "en": "Change IP address setting to base URL (settings will need to be updated). Fixed timeout handling. Parse readings from index HTML. Refactor to use more promises & single interval timer.",
+                "de": "Ändern Sie die IP-Adresseinstellung in die Basis-URL (die Einstellungen müssen aktualisiert werden). Zeitüberschreitung behoben. Analysieren Sie die Messwerte aus dem Index-HTML. Refactor, um mehr Versprechen und Timer mit einem Intervall zu verwenden.",
+                "ru": "Измените настройку IP-адреса на базовый URL (необходимо обновить настройки). Исправлена обработка тайм-аута. Разобрать показания из индекса HTML. Выполните рефакторинг, чтобы использовать больше обещаний и одноинтервальный таймер.",
+                "pt": "Altere a configuração do endereço IP para URL base (as configurações precisarão ser atualizadas). Tratamento de tempo limite fixo. Analisa as leituras do índice HTML. Refatore para usar mais promessas e temporizador de intervalo único.",
+                "nl": "Wijzig de IP-adresinstelling in de basis-URL (instellingen moeten worden bijgewerkt). Vaste afhandeling van time-outs. Ontleed metingen uit index HTML. Refactor om meer beloften en een enkele intervaltimer te gebruiken.",
+                "fr": "Modifiez le paramètre d'adresse IP en URL de base (les paramètres devront être mis à jour). Correction du délai d'expiration. Analyser les lectures de l'index HTML. Refactoriser pour utiliser plus de promesses et une minuterie à intervalle unique.",
+                "it": "Modificare l'impostazione dell'indirizzo IP nell'URL di base (le impostazioni dovranno essere aggiornate). Risolto il problema con la gestione del timeout. Analizza le letture dall'indice HTML. Refactoring per utilizzare più promesse e un singolo intervallo di tempo.",
+                "es": "Cambie la configuración de la dirección IP a la URL base (la configuración deberá actualizarse). Manejo del tiempo de espera fijo. Analizar las lecturas del índice HTML. Refactorice para usar más promesas y temporizador de intervalo único.",
+                "pl": "Zmień ustawienie adresu IP na podstawowy adres URL (ustawienia będą wymagały aktualizacji). Naprawiono obsługę limitu czasu. Przeanalizuj odczyty z indeksu HTML. Refaktoryzuj, aby używać więcej obietnic i pojedynczego licznika czasu",
+                "zh-cn": "将IP地址设置更改为基本URL（需要更新设置）。固定超时处理。解析来自索引HTML的读数。重构以使用更多的Promise和单个间隔计时器。"
             }
         },
-        "title": "Legrand Ecocompteur",
-        "titleLang": {
-            "en": "Legrand Ecocompteur",
-            "de": "Legrand Ecocompteur",
-            "ru": "Legrand Ecocompteur",
-            "pt": "Legrand Ecocompteur",
-            "nl": "Legrand Ecocompteur",
-            "fr": "Ecocompteur Legrand",
-            "it": "Legrand Ecocompteur",
-            "es": "Ecocompteur Legrand",
-            "pl": "Legrand Ecocompteur",
-            "zh-cn": "罗格朗生态公司"
+        "0.0.4": {
+            "en": "Added reading validation filter.",
+            "de": "Lesevalidierungsfilter hinzugefügt.",
+            "ru": "Добавлен фильтр проверки чтения.",
+            "pt": "Adicionado filtro de validação de leitura.",
+            "nl": "Leesvalidatiefilter toegevoegd.",
+            "fr": "Ajout d'un filtre de validation de lecture.",
+            "it": "Aggiunto filtro di convalida della lettura.",
+            "es": "Se agregó un filtro de validación de lectura.",
+            "pl": "Dodano filtr sprawdzania poprawności odczytu.",
+            "zh-cn": "添加了阅读验证过滤器。"
         },
-        "desc": {
-            "en": "Adapter for the Legrand Ecocompteur module (aka. Legrand Measurement Concentrator EMDX³ 412000).",
-            "de": "Adapter für das Legrand Ecocompteur-Modul (auch bekannt als Legrand Measurement Concentrator EMDX³ 412000).",
-            "ru": "Адаптер для модуля Legrand Ecocompteur (также известный как измерительный концентратор Legrand EMDX³ 412000).",
-            "pt": "Adaptador para o módulo Legrand Ecocompteur (também conhecido como Legrand Measurement Concentrator EMDX³ 412000).",
-            "nl": "Adapter voor de Legrand Ecocompteur-module (ook bekend als Legrand Meetconcentrator EMDX³ 412000).",
-            "fr": "Adaptateur pour le module Ecocompteur Legrand (alias. Concentrateur de mesure Legrand EMDX³ 412000).",
-            "it": "Adattatore per il modulo Legrand Ecocompteur (alias Legrand Measurement Concentrator EMDX³ 412000).",
-            "es": "Adaptador para el módulo Legrand Ecocompteur (también conocido como Legrand Measurement Concentrator EMDX³ 412000).",
-            "pl": "Adapter do modułu Legrand Ecocompteur (alias. Legrand Measurement Concentrator EMDX³ 412000).",
-            "zh-cn": "Legrand Ecocompteur模块的适配器（又名Legrand测量集中器EMDX³412000）。"
-        },
-        "authors": [
-            "Robin Rainton <robin@rainton.com>"
-        ],
-        "keywords": [
-            "Legrand",
-            "energy",
-            "power",
-            "measurement"
-        ],
-        "license": "MIT",
-        "platform": "Javascript/Node.js",
-        "main": "main.js",
-        "icon": "legrand-ecocompteur.png",
-        "enabled": true,
-        "extIcon": "https://raw.githubusercontent.com/raintonr/ioBroker.legrand-ecocompteur/master/admin/legrand-ecocompteur.png",
-        "readme": "https://github.com/raintonr/ioBroker.legrand-ecocompteur/blob/master/README.md",
-        "loglevel": "info",
-        "mode": "daemon",
-        "type": "energy",
-        "compact": true,
-        "connectionType": "local",
-        "dataSource": "poll",
-        "materialize": true,
-        "dependencies": [
-            {
-                "js-controller": ">=1.4.2"
-            }
-        ]
+        "0.0.3": {
+            "en": "Initial release.",
+            "de": "Erstveröffentlichung.",
+            "ru": "Начальная версия.",
+            "pt": "lançamento inicial.",
+            "nl": "Eerste uitgave.",
+            "fr": "Première version.",
+            "it": "Versione iniziale.",
+            "es": "Versión inicial.",
+            "pl": "Pierwsze wydanie.",
+            "zh-cn": "首次出版。"
+        }
     },
-    "native": {
-        "option1": true,
-        "option2": "42"
+    "title": "Legrand Ecocompteur",
+    "titleLang": {
+        "en": "Legrand Ecocompteur",
+        "de": "Legrand Ecocompteur",
+        "ru": "Legrand Ecocompteur",
+        "pt": "Legrand Ecocompteur",
+        "nl": "Legrand Ecocompteur",
+        "fr": "Ecocompteur Legrand",
+        "it": "Legrand Ecocompteur",
+        "es": "Ecocompteur Legrand",
+        "pl": "Legrand Ecocompteur",
+        "zh-cn": "罗格朗生态公司"
     },
-    "objects": [],
-    "instanceObjects": []
+    "desc": {
+        "en": "Adapter for the Legrand Ecocompteur module (aka. Legrand Measurement Concentrator EMDX³ 412000).",
+        "de": "Adapter für das Legrand Ecocompteur-Modul (auch bekannt als Legrand Measurement Concentrator EMDX³ 412000).",
+        "ru": "Адаптер для модуля Legrand Ecocompteur (также известный как измерительный концентратор Legrand EMDX³ 412000).",
+        "pt": "Adaptador para o módulo Legrand Ecocompteur (também conhecido como Legrand Measurement Concentrator EMDX³ 412000).",
+        "nl": "Adapter voor de Legrand Ecocompteur-module (ook bekend als Legrand Meetconcentrator EMDX³ 412000).",
+        "fr": "Adaptateur pour le module Ecocompteur Legrand (alias. Concentrateur de mesure Legrand EMDX³ 412000).",
+        "it": "Adattatore per il modulo Legrand Ecocompteur (alias Legrand Measurement Concentrator EMDX³ 412000).",
+        "es": "Adaptador para el módulo Legrand Ecocompteur (también conocido como Legrand Measurement Concentrator EMDX³ 412000).",
+        "pl": "Adapter do modułu Legrand Ecocompteur (alias. Legrand Measurement Concentrator EMDX³ 412000).",
+        "zh-cn": "Legrand Ecocompteur模块的适配器（又名Legrand测量集中器EMDX³412000）。"
+    },
+    "authors": [
+        "Robin Rainton <robin@rainton.com>"
+    ],
+    "keywords": [
+        "Legrand",
+        "energy",
+        "power",
+        "measurement"
+    ],
+    "license": "MIT",
+    "platform": "Javascript/Node.js",
+    "main": "main.js",
+    "icon": "legrand-ecocompteur.png",
+    "enabled": true,
+    "extIcon": "https://raw.githubusercontent.com/raintonr/ioBroker.legrand-ecocompteur/master/admin/legrand-ecocompteur.png",
+    "readme": "https://github.com/raintonr/ioBroker.legrand-ecocompteur/blob/master/README.md",
+    "loglevel": "info",
+    "mode": "daemon",
+    "type": "energy",
+    "compact": true,
+    "connectionType": "local",
+    "dataSource": "poll",
+    "materialize": true,
+    "dependencies": [
+        {
+            "js-controller": ">=1.4.2"
+        }
+    ]
+},
+"objects": [],
+"instanceObjects": []
 }

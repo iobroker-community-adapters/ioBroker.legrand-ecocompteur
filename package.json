@@ -19,7 +19,8 @@
     "url": "https://github.com/raintonr/ioBroker.legrand-ecocompteur"
   },
   "dependencies": {
-    "@iobroker/adapter-core": "^2.4.0"
+    "@iobroker/adapter-core": "^2.4.0",
+    "set-interval-async": "*"
   },
   "devDependencies": {
     "@iobroker/testing": "^2.2.0",

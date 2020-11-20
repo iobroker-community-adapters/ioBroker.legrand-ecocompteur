@@ -7,6 +7,7 @@
 // The adapter-core module gives you access to the core ioBroker functions
 // you need to create an adapter
 const utils = require('@iobroker/adapter-core');
+const { clearIntervalAsync, setIntervalAsync } = require('set-interval-async/dynamic');
 
 // The device communicates over http only
 const http = require('http');
@@ -58,19 +59,24 @@ class LegrandEcocompteur extends utils.Adapter {
         this.on('ready', this.onReady.bind(this));
         this.on('unload', this.onUnload.bind(this));
 
-        this.lastCircuitWatts = [];
-
-        // Timers (to clear on cleanup)
-        this.JSONTimer;
-        this.IndexTimer;
+        this.lastIndex = 0;
+        this.lastJSON = 0;
     }
 
-    /**
-     * Is called when databases are connected and adapter received configuration.
-     */
-    async onReady() {
-        // Create states we're going to need
+    // Create all the objects & states
+    async createObjects() {
+        this.log.debug('Creating adapter objects');
         circuits.forEach(async (circuit) => {
+            if ('powerStateName' in circuit || 'labelStateName' in circuit) {
+                // Need to create a channel for ths circuit
+                await this.setObjectNotExistsAsync(circuit.name, {
+                    type: 'channel',
+                    common: {
+                        name: circuit.name,
+                        role: 'info'
+                    }
+                });
+            }
             if ('labelStateName' in circuit) {
                 await this.setObjectNotExistsAsync(circuit.labelStateName, {
                     type: 'state',
@@ -119,54 +125,83 @@ class LegrandEcocompteur extends utils.Adapter {
                 });
             }
         });
+    }
 
+    /**
+     * Is called when databases are connected and adapter received configuration.
+     */
+    onReady() {
         // Error if we don't have configuration
         if (this.config.baseURL && this.config.pollJSON && this.config.pollIndex) {
             this.log.info('baseURL: ' + this.config.baseURL + ' JSON Poll: ' + this.config.pollJSON + ' Index Poll: ' + this.config.pollIndex);
 
-            // Hit the index page first to parse out circuit names, etc.
-            this.hitPage(this.parseFullPage.bind(this));
+            this.createObjects().then(() => {
+                this.hitIndex().then(() => {
+                    this.log.debug('Initial fetch done, starting interval...');
+                    // Configured timers in ms
+                    const pollIndex = this.config.pollIndex * 1000;
+                    const pollJSON = this.config.pollJSON * 1000;
 
-            // Start interval timers for subsiquent fetches
-            this.IndexTimer = setInterval(this.hitPage.bind(this), this.config.pollIndex * 1000, this.parseFullPage.bind(this));
-            this.JSONTimer = setInterval(this.hitJSON.bind(this), this.config.pollJSON * 1000, this.parseJSON.bind(this));
+                    // Start interval timers for subsiquent fetches
+                    this.interval = setIntervalAsync(async () => {
+                        // Hit JSON or Index depending on which is most overdue
+                        const now = Date.now();
+                        if ((now - this.lastJSON - pollJSON) > (now - this.lastIndex - pollIndex)) {
+                            // JSON is most overdue
+                            await this.hitJSON();
+                        } else {
+                            // Index is most overdue
+                            await this.hitIndex();
+                        }
+                    }, Math.min(pollIndex, pollJSON));
+                });
+            });
+
         } else {
             this.log.error('Please configure the adapter settings');
         }
     }
 
-    // Fetch a page from the device and pass body to the callback (or call the error callback if given).
-    doRequest(path, cb, ecb) {
-        this.log.debug('Loading ' + path + '...');
-
-        const req = http.get(new URL(path, this.config.baseURL), getOptions, res => {
-            let body = '';
-            res.on('data', data => {
-                body += data;
-            });
-            res.on('end', () => {
-                if (res.statusCode == 200) {
-                    cb(body);
-                } else {
-                    this.log.error('Bad status code loading ' + path + ' (' + res.statusCode + ')');
-                    if (typeof ecb !== 'undefined') { ecb(); }
-                }
-            });
-        });
-        req.on('error', error => {
-            this.log.error('Request error: ' + error.message);
-            if (typeof ecb !== 'undefined') { ecb(); }
-        });
-        req.on('timeout', () => {
-            this.log.error('Request timeout!');
-            // No need to call ecb here as destroy will trigger 'error' event which does that.
-            req.destroy(new Error('timeout'));
-        });
-        req.end();
+    async hitIndex() {
+        const body = await this.doRequest('1.html');
+        await this.parseIndex(body);
     }
 
-    hitPage(cb) {
-        this.doRequest('1.html', cb);
+    async hitJSON() {
+        const body = await this.doRequest('inst.json');
+        await this.parseJSON(body);
+    }
+
+    // Fetch a page from the device and pass body to the callback (or call the error callback if given).
+    doRequest(path) {
+        return new Promise((resolve, reject) => {
+            this.log.debug('Loading ' + path + '...');
+
+            const req = http.get(new URL(path, this.config.baseURL), getOptions, res => {
+                let body = '';
+                res.on('data', data => {
+                    body += data;
+                });
+                res.on('end', () => {
+                    if (res.statusCode == 200) {
+                        resolve(body);
+                    } else {
+                        this.log.error('Bad status code loading ' + path + ' (' + res.statusCode + ')');
+                        reject();
+                    }
+                });
+            });
+            req.on('error', error => {
+                this.log.error('Request error: ' + error.message);
+                reject();
+            });
+            req.on('timeout', () => {
+                this.log.error('Request timeout!');
+                // No need to call ecb here as destroy will trigger 'error' event which does that.
+                req.destroy(new Error('timeout'));
+            });
+            req.end();
+        });
     }
 
     // As we store the last valid readings on a per-circuit basis (when calculating
@@ -191,24 +226,20 @@ class LegrandEcocompteur extends utils.Adapter {
 
     // Whenever a circuit reading is recevied this method will update
     // it's kWh energy total
-    updateCircuitEnergy(circuit, timestamp, power) {
+    async updateCircuitEnergy(circuit, timestamp, power) {
         if (circuit.lastTimestamp > 0) {
             // We want the period in hours for kWh calculation
             const period = (timestamp - circuit.lastTimestamp) / 1000 / 3600;
 
             let kWh = power / 1000 * period;
             this.log.debug(`${circuit.name} - lastPower: ${circuit.lastPower} @ period: ${period} = ${kWh} kWh`);
-            this.getState(circuit.energyStateName, (err, state) => {
-                if (!err) {
-                    if (state) {
-                        kWh += state.val;
-                    }
-                    this.setStateChanged(circuit.energyStateName, { val: kWh, ack: true });
-                } else {
-                    this.log.error(err);
-                }
-            });
-
+            const state = await this.getStateAsync(circuit.energyStateName);
+            if (!state || !state.val) {
+                this.log.warn(`state is null for ${circuit.name} - it will be reset`);
+            } else {
+                kWh += state.val;
+            }
+            await this.setStateChangedAsync(circuit.energyStateName, { val: kWh, ack: true });
         }
         // Remember this reading value & timestamp for next cycle
         circuit.lastTimestamp = timestamp;
@@ -216,11 +247,11 @@ class LegrandEcocompteur extends utils.Adapter {
     }
 
     // Store total and calculate energy
-    updateTotal(timestamp, power) {
+    async updateTotal(timestamp, power) {
         const circuit = circuits[circuitTotal];
         // Special case - update total power
         this.updateCircuitEnergy(circuit, timestamp, power);
-        this.setStateChanged(circuit.powerStateName, { val: power, ack: true });
+        await this.setStateChangedAsync(circuit.powerStateName, { val: power, ack: true });
     }
 
     /*
@@ -228,11 +259,12 @@ class LegrandEcocompteur extends utils.Adapter {
      * timers.
      * This is the callback only on the first fetch.
      */
-    parseFullPage(page) {
+    async parseIndex(page) {
         const timestamp = Date.now();
+        this.lastIndex = timestamp;
 
         let totalPower = 0;
-        circuits.forEach(circuit => {
+        for (const circuit of circuits) {
             if ('lpRegexp' in circuit) {
                 const matches = page.match(circuit.lpRegexp);
                 if (!matches) {
@@ -242,11 +274,11 @@ class LegrandEcocompteur extends utils.Adapter {
                     const label = matches[1];
                     const power = this.validateCircuitPower(circuit, Number(matches[2]));
                     this.log.debug(`${circuit.name} (${label}): ${power}`);
-                    this.setStateChanged(circuit.labelStateName, { val: label, ack: true });
-                    this.setStateChanged(circuit.powerStateName, { val: power, ack: true });
+                    await this.setStateChangedAsync(circuit.labelStateName, { val: label, ack: true });
+                    await this.setStateChangedAsync(circuit.powerStateName, { val: power, ack: true });
                     totalPower += power;
 
-                    this.updateCircuitEnergy(circuit, timestamp, power);
+                    await this.updateCircuitEnergy(circuit, timestamp, power);
                 }
             }
             if ('energyRegexp' in circuit) {
@@ -256,49 +288,46 @@ class LegrandEcocompteur extends utils.Adapter {
                 }
                 const energy = matches[1] * circuit.scale;
                 this.log.debug(`${circuit.name}: ${energy}`);
-                this.setStateChanged(circuit.energyStateName, { val: energy, ack: true });
+                await this.setStateChangedAsync(circuit.energyStateName, { val: energy, ack: true });
             }
-        });
+        }
 
         // Don't forget total
-        this.updateTotal(timestamp, totalPower);
-    }
-
-    hitJSON() {
-        this.doRequest('inst.json', this.parseJSON.bind(this), this.zeroReadings.bind(this));
+        await this.updateTotal(timestamp, totalPower);
     }
 
     // Zero everything out to prevent bogus values. Happens at shutdown.
-    zeroReadings() {
+    async zeroReadings() {
         this.log.info('Setting zero readings');
         this.lastJSONTimestamp = 0;
-        circuits.forEach((circuit) => {
+        for (const circuit of circuits) {
             if ('powerStateName' in circuit) {
-                this.setState(circuit.powerStateName, { val: 0, ack: true });
+                await this.setStateAsync(circuit.powerStateName, { val: 0, ack: true });
             }
-        });
+        };
     }
 
     // Process good response
-    parseJSON(body) {
+    async parseJSON(body) {
         const timestamp = Date.now();
+        this.lastJSON = timestamp;
 
         try {
             const json = JSON.parse(body);
 
             let totalPower = 0;
-            circuits.forEach(circuit => {
+            for (const circuit of circuits) {
                 if ('jsonWatts' in circuit) {
                     const power = this.validateCircuitPower(circuit, json[circuit.jsonWatts]);
                     this.log.debug(`${circuit.name}: ${power}`);
-                    this.setState(circuit.powerStateName, { val: power, ack: true });
+                    await this.setStateAsync(circuit.powerStateName, { val: power, ack: true });
                     totalPower += power;
 
-                    this.updateCircuitEnergy(circuit, timestamp, power);
+                    await this.updateCircuitEnergy(circuit, timestamp, power);
                 }
-            });
+            }
             // Don't forget total
-            this.updateTotal(timestamp, totalPower);
+            await this.updateTotal(timestamp, totalPower);
         } catch (error) {
             // TODO: zero out readings?
             this.log.error(error);
@@ -312,10 +341,11 @@ class LegrandEcocompteur extends utils.Adapter {
     onUnload(callback) {
         try {
             this.log.info('cleaned everything up...');
-            this.zeroReadings();
-            clearInterval(this.JSONTimer);
-            clearInterval(this.IndexTimer);
-            callback();
+            clearIntervalAsync(this.interval).then(() => {
+                this.zeroReadings().then(() => {
+                    callback();
+                });
+            });
         } catch (e) {
             callback();
         }

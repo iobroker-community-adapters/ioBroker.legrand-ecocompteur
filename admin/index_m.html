@@ -91,7 +91,7 @@
             <div class="col s12 input-field">
                 <input id="pollIndex" class="value" type="number" min="1"/>
                 <label for="pollIndex" class="translate">Index polling interval (in seconds)</label>
-                <span>To obtain TIC reading. Be aware that polling the index page too often may cause the device's IP stack to crash. Periods below 120s are not recommended.</span>
+                <span>To obtain TIC reading. Index will be polled *instead* of JSON after this period. Hence for best results should be an exact multiple of JSON period.</span>
             </div>
         </div>
 

@@ -42,7 +42,7 @@ const circuits = [
     { name: 'c3', powerStateName: 'c3.power', energyStateName: 'c3.energy', labelStateName: 'c3.label', lpRegexp: new RegExp(/c3Name = getLabel\("(.*?) *"\);\s*?c3 = (\d+)/, 's'), jsonWatts: 'data3' },
     { name: 'c4', powerStateName: 'c4.power', energyStateName: 'c4.energy', labelStateName: 'c4.label', lpRegexp: new RegExp(/c4Name = getLabel\("(.*?) *"\);\s*?c4 = (\d+)/, 's'), jsonWatts: 'data4' },
     { name: 'c5', powerStateName: 'c5.power', energyStateName: 'c5.energy', labelStateName: 'c5.label', lpRegexp: new RegExp(/c5Name = getLabel\("(.*?) *"\);\s*?c5 = (\d+)/, 's'), jsonWatts: 'data5' },
-    { name: 'Total', powerStateName: 'cTotal.power', energyStateName: 'cTotal.energy' },
+    { name: 'cTotal', powerStateName: 'cTotal.power', energyStateName: 'cTotal.energy' },
     { name: 'TIC', energyStateName: 'TICReading', energyRegexp: "conso_base = '(.*)'", scale: 0.001 },
 ];
 const circuitTotal = 5; // Must match element number above

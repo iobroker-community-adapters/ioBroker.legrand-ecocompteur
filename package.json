@@ -1,6 +1,6 @@
 {
   "name": "iobroker.legrand-ecocompteur",
-  "version": "0.0.6",
+  "version": "1.0.0",
   "description": "Adapter for the Legrand Ecocompteur module (aka. Legrand Measurement Concentrator EMDX³ 412000).",
   "author": {
     "name": "Robin Rainton",

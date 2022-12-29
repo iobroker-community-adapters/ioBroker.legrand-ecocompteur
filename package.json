@@ -6,7 +6,7 @@
     "name": "Robin Rainton",
     "email": "robin@rainton.com"
   },
-  "homepage": "https://github.com/raintonr/ioBroker.legrand-ecocompteur",
+  "homepage": "https://github.com/iobroker-community-adapters/ioBroker.legrand-ecocompteur",
   "license": "MIT",
   "keywords": [
     "Legrand",
@@ -16,7 +16,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/raintonr/ioBroker.legrand-ecocompteur"
+    "url": "https://github.com/iobroker-community-adapters/ioBroker.legrand-ecocompteur"
   },
   "dependencies": {
     "@iobroker/adapter-core": "^2.4.0",
@@ -52,7 +52,7 @@
     "lint": "eslint"
   },
   "bugs": {
-    "url": "https://github.com/raintonr/ioBroker.legrand-ecocompteur/issues"
+    "url": "https://github.com/iobroker-community-adapters/ioBroker.legrand-ecocompteur/issues"
   },
   "readmeFilename": "README.md"
 }

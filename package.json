@@ -18,6 +18,9 @@
     "type": "git",
     "url": "https://github.com/iobroker-community-adapters/ioBroker.legrand-ecocompteur"
   },
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "dependencies": {
     "@iobroker/adapter-core": "^2.4.0",
     "set-interval-async": "*"

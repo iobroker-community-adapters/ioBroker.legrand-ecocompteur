@@ -94,6 +94,7 @@
         "extIcon": "https://raw.githubusercontent.com/iobroker-community-adapters/ioBroker.legrand-ecocompteur/master/admin/legrand-ecocompteur.png",
         "readme": "https://github.com/iobroker-community-adapters/ioBroker.legrand-ecocompteur/blob/master/README.md",
         "loglevel": "info",
+        "tier": 2,
         "mode": "daemon",
         "type": "energy",
         "compact": true,

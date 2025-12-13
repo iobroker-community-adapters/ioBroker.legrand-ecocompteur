@@ -71,7 +71,7 @@ The following configuration is required:
 ## License
 MIT License
 
-Copyright (c) 2020 Robin Rainton <robin@rainton.com>
+Copyright (c) 2020-2025 Robin Rainton <robin@rainton.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

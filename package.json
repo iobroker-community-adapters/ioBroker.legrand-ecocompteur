@@ -2,10 +2,10 @@
   "name": "iobroker.legrand-ecocompteur",
   "version": "1.0.0",
   "description": "Adapter for the Legrand Ecocompteur module (aka. Legrand Measurement Concentrator EMDX³ 412000).",
-  "author": {
-    "name": "Robin Rainton",
-    "email": "robin@rainton.com"
-  },
+  "author": "Robin Rainton <robin@rainton.com>",
+  "contributors": [
+    "iobroker-community-adapters <iobroker-community-adapters@gmx.de>"
+  ],
   "homepage": "https://github.com/iobroker-community-adapters/ioBroker.legrand-ecocompteur",
   "license": "MIT",
   "keywords": [

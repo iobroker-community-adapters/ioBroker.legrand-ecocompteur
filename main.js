@@ -10,7 +10,7 @@ const utils = require('@iobroker/adapter-core');
 const { clearIntervalAsync, setIntervalAsync } = require('set-interval-async/dynamic');
 
 // The device communicates over http only
-const http = require('http');
+const http = require('node:http');
 
 // Default options for HTTP get
 const getOptions = {

@@ -22,7 +22,9 @@ describe('admin jsonConfig migration', () => {
         }
     };
 
-    collectTranslationKeys(jsonConfig.items);
+    before(() => {
+        collectTranslationKeys(jsonConfig.items);
+    });
 
     it('enables jsonConfig in io-package.json', () => {
         const ioPackage = JSON.parse(fs.readFileSync(path.join(repoRoot, 'io-package.json'), 'utf8'));

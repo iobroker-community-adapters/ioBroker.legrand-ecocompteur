@@ -1,0 +1,10 @@
+{
+  "Base URL of device": "Basis-URL van het apparaat",
+  "Generally http://<IP address/DNS name>/ but to use a proxy, port forwarding, etc. it is possible to use http://<IP address>:<Port>/<Path> if necessary.": "Meestal http://<IP-adres/DNS-naam>/, maar om een proxy, port forwarding enz. te gebruiken, kan indien nodig ook http://<IP-adres>:<Poort>/<Pad> worden gebruikt.",
+  "JSON polling interval (in seconds)": "JSON-pollinginterval (in seconden)",
+  "To read instantaneous power for all circuits. For reference, the device's built-in web interface polls every second.": "Om het momentane vermogen van alle circuits te lezen. Ter referentie: de ingebouwde webinterface van het apparaat pollt elke seconde.",
+  "Index polling interval (in seconds)": "Index-pollinginterval (in seconden)",
+  "To obtain TIC reading. Index will be polled instead of JSON after this period. For best results, this should be an exact multiple of the JSON period.": "Om de TIC-waarde op te halen. Na deze periode wordt de index gepolld in plaats van JSON. Voor de beste resultaten moet dit een exact veelvoud zijn van de JSON-periode.",
+  "Validation: maximum circuit reading (in Watts)": "Validatie: maximale circuitwaarde (in watt)",
+  "For input validation. Discard circuit readings greater than this value. Set to zero to disable validation.": "Voor invoervalidatie. Circuitmetingen groter dan deze waarde worden verworpen. Zet op 0 om validatie uit te schakelen."
+}

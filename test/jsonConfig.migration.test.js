@@ -9,10 +9,20 @@ describe('admin jsonConfig migration', () => {
     const jsonConfig = JSON.parse(fs.readFileSync(path.join(repoRoot, 'admin/jsonConfig.json'), 'utf8'));
     const translationKeys = new Set();
 
-    for (const item of Object.values(jsonConfig.items)) {
-        if (item.label) translationKeys.add(item.label);
-        if (item.help) translationKeys.add(item.help);
-    }
+    const collectTranslationKeys = (entry) => {
+        if (!entry || typeof entry !== 'object') {
+            return;
+        }
+
+        if (typeof entry.label === 'string') translationKeys.add(entry.label);
+        if (typeof entry.help === 'string') translationKeys.add(entry.help);
+
+        for (const value of Object.values(entry)) {
+            collectTranslationKeys(value);
+        }
+    };
+
+    collectTranslationKeys(jsonConfig.items);
 
     it('enables jsonConfig in io-package.json', () => {
         const ioPackage = JSON.parse(fs.readFileSync(path.join(repoRoot, 'io-package.json'), 'utf8'));

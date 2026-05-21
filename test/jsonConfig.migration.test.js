@@ -6,6 +6,13 @@ const { expect } = require('chai');
 
 describe('admin jsonConfig migration', () => {
     const repoRoot = path.join(__dirname, '..');
+    const jsonConfig = JSON.parse(fs.readFileSync(path.join(repoRoot, 'admin/jsonConfig.json'), 'utf8'));
+    const translationKeys = new Set();
+
+    for (const item of Object.values(jsonConfig.items)) {
+        if (item.label) translationKeys.add(item.label);
+        if (item.help) translationKeys.add(item.help);
+    }
 
     it('enables jsonConfig in io-package.json', () => {
         const ioPackage = JSON.parse(fs.readFileSync(path.join(repoRoot, 'io-package.json'), 'utf8'));
@@ -14,13 +21,27 @@ describe('admin jsonConfig migration', () => {
     });
 
     it('contains jsonConfig with expected native keys', () => {
-        const jsonConfig = JSON.parse(fs.readFileSync(path.join(repoRoot, 'admin/jsonConfig.json'), 'utf8'));
-
         expect(Object.keys(jsonConfig.items)).to.deep.equal(['baseURL', 'pollJSON', 'pollIndex', 'validationMax']);
     });
 
     it('removes legacy materialize admin files', () => {
         expect(fs.existsSync(path.join(repoRoot, 'admin/index_m.html'))).to.equal(false);
         expect(fs.existsSync(path.join(repoRoot, 'admin/words.js'))).to.equal(false);
+    });
+
+    it('contains synchronized i18n files for all configured languages', () => {
+        const languages = ['de', 'en', 'es', 'fr', 'it', 'nl', 'pl', 'pt', 'ru', 'uk', 'zh-cn'];
+
+        for (const language of languages) {
+            const translationPath = path.join(repoRoot, `admin/i18n/${language}.json`);
+            expect(fs.existsSync(translationPath), `${language} translation file is missing`).to.equal(true);
+
+            const translations = JSON.parse(fs.readFileSync(translationPath, 'utf8'));
+            const languageKeys = Object.keys(translations);
+
+            for (const key of translationKeys) {
+                expect(languageKeys).to.include(key, `${language} is missing translation key: ${key}`);
+            }
+        }
     });
 });

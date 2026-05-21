@@ -1,0 +1,10 @@
+{
+  "Base URL of device": "设备基础 URL",
+  "Generally http://<IP address/DNS name>/ but to use a proxy, port forwarding, etc. it is possible to use http://<IP address>:<Port>/<Path> if necessary.": "通常为 http://<IP 地址/DNS 名称>/，但如需使用代理、端口转发等，也可使用 http://<IP 地址>:<端口>/<路径>。",
+  "JSON polling interval (in seconds)": "JSON 轮询间隔（秒）",
+  "To read instantaneous power for all circuits. For reference, the device's built-in web interface polls every second.": "用于读取所有回路的瞬时功率。作为参考，设备内置网页界面每秒轮询一次。",
+  "Index polling interval (in seconds)": "索引轮询间隔（秒）",
+  "To obtain TIC reading. Index will be polled instead of JSON after this period. For best results, this should be an exact multiple of the JSON period.": "用于获取 TIC 读数。超过该周期后将轮询索引而不是 JSON。为获得最佳效果，该值应为 JSON 周期的整数倍。",
+  "Validation: maximum circuit reading (in Watts)": "校验：回路最大读数（瓦）",
+  "For input validation. Discard circuit readings greater than this value. Set to zero to disable validation.": "用于输入校验。大于该值的回路读数将被丢弃。设置为 0 可禁用校验。"
+}

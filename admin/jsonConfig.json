@@ -1,0 +1,49 @@
+{
+  "type": "panel",
+  "items": {
+    "baseURL": {
+      "type": "text",
+      "label": "Base URL of device",
+      "help": "Generally http://<IP address/DNS name>/ but to use a proxy, port forwarding, etc. it is possible to use http://<IP address>:<Port>/<Path> if necessary.",
+      "xs": 12,
+      "sm": 12,
+      "md": 12,
+      "lg": 12,
+      "xl": 12
+    },
+    "pollJSON": {
+      "type": "number",
+      "label": "JSON polling interval (in seconds)",
+      "help": "To read instantaneous power for all circuits. For reference, the device's built-in web interface polls every second.",
+      "min": 1,
+      "xs": 12,
+      "sm": 12,
+      "md": 6,
+      "lg": 6,
+      "xl": 6
+    },
+    "pollIndex": {
+      "type": "number",
+      "label": "Index polling interval (in seconds)",
+      "help": "To obtain TIC reading. Index will be polled instead of JSON after this period. For best results, this should be an exact multiple of the JSON period.",
+      "min": 1,
+      "xs": 12,
+      "sm": 12,
+      "md": 6,
+      "lg": 6,
+      "xl": 6
+    },
+    "validationMax": {
+      "type": "number",
+      "label": "Validation: maximum circuit reading (in Watts)",
+      "help": "For input validation. Discard circuit readings greater than this value. Set to zero to disable validation.",
+      "min": 0,
+      "max": 100000,
+      "xs": 12,
+      "sm": 12,
+      "md": 6,
+      "lg": 6,
+      "xl": 6
+    }
+  }
+}

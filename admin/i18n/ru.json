@@ -1,0 +1,10 @@
+{
+  "Base URL of device": "Базовый URL устройства",
+  "Generally http://<IP address/DNS name>/ but to use a proxy, port forwarding, etc. it is possible to use http://<IP address>:<Port>/<Path> if necessary.": "Обычно используется http://<IP-адрес/имя DNS>/, но для прокси, переадресации порта и т. п. при необходимости можно использовать http://<IP-адрес>:<Порт>/<Путь>.",
+  "JSON polling interval (in seconds)": "Интервал опроса JSON (в секундах)",
+  "To read instantaneous power for all circuits. For reference, the device's built-in web interface polls every second.": "Для чтения мгновенной мощности всех цепей. Для справки: встроенный веб-интерфейс устройства опрашивает данные каждую секунду.",
+  "Index polling interval (in seconds)": "Интервал опроса индекса (в секундах)",
+  "To obtain TIC reading. Index will be polled instead of JSON after this period. For best results, this should be an exact multiple of the JSON period.": "Для получения показаний TIC. По истечении этого периода вместо JSON будет опрашиваться индекс. Для наилучших результатов это должно быть точным кратным периоду JSON.",
+  "Validation: maximum circuit reading (in Watts)": "Проверка: максимальное значение цепи (в ваттах)",
+  "For input validation. Discard circuit readings greater than this value. Set to zero to disable validation.": "Для проверки входных данных. Отбрасывайте показания цепи выше этого значения. Установите 0, чтобы отключить проверку."
+}

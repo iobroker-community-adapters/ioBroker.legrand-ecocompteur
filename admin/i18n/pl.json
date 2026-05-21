@@ -4,7 +4,7 @@
   "JSON polling interval (in seconds)": "Interwał odpytywania JSON (w sekundach)",
   "To read instantaneous power for all circuits. For reference, the device's built-in web interface polls every second.": "Do odczytu chwilowej mocy wszystkich obwodów. Dla porównania, wbudowany interfejs WWW urządzenia odpyta co sekundę.",
   "Index polling interval (in seconds)": "Interwał odpytywania indeksu (w sekundach)",
-  "To obtain TIC reading. Index will be polled instead of JSON after this period. For best results, this should be an exact multiple of the JSON period.": "Do uzyskania odczytu TIC. Po tym czasie odpytywany będzie indeks zamiast JSON. Dla najlepszych wyników powinien to być dokładny wielokrotność okresu JSON.",
+  "To obtain TIC reading. Index will be polled instead of JSON after this period. For best results, this should be an exact multiple of the JSON period.": "Do uzyskania odczytu TIC. Po tym czasie odpytywany będzie indeks zamiast JSON. Dla najlepszych wyników powinna to być dokładna wielokrotność okresu JSON.",
   "Validation: maximum circuit reading (in Watts)": "Walidacja: maksymalny odczyt obwodu (w watach)",
   "For input validation. Discard circuit readings greater than this value. Set to zero to disable validation.": "Do walidacji danych wejściowych. Odrzuć odczyty obwodu większe od tej wartości. Ustaw 0, aby wyłączyć walidację."
 }

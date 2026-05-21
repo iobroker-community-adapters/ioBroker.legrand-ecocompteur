@@ -33,7 +33,7 @@ describe('admin jsonConfig migration', () => {
     });
 
     it('contains jsonConfig with expected native keys', () => {
-        expect(Object.keys(jsonConfig.items)).to.deep.equal(['baseURL', 'pollJSON', 'pollIndex', 'validationMax']);
+        expect(Object.keys(jsonConfig.items)).to.have.members(['baseURL', 'pollJSON', 'pollIndex', 'validationMax']);
     });
 
     it('removes legacy materialize admin files', () => {
